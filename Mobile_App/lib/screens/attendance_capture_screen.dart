@@ -58,18 +58,20 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
 
   Future<void> _initializeCamera() async {
     try {
-      // Request Camera and Location permissions explicitly as requested by user
+      // Request Camera, Location, and Notification permissions explicitly
       Map<Permission, PermissionStatus> statuses = await [
         Permission.camera,
         Permission.location,
+        Permission.notification,
       ].request();
 
       if (statuses[Permission.camera] != PermissionStatus.granted ||
-          statuses[Permission.location] != PermissionStatus.granted) {
+          statuses[Permission.location] != PermissionStatus.granted ||
+          statuses[Permission.notification] != PermissionStatus.granted) {
         if (mounted) {
           AppMessages.showError(
             context,
-            'Both Camera and Location permissions are strictly required to capture a selfie and log your attendance location. Please grant them in App Settings.',
+            'Camera, Location, and Notification permissions are strictly required to verify your attendance and keep location tracking running. Please grant them in App Settings.',
           );
           Navigator.pop(context);
         }

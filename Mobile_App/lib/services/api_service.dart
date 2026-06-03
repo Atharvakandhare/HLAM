@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http_parser/http_parser.dart';
@@ -7,7 +8,25 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 
+class ApiException implements Exception {
+  final String userMessage;
+  final String devDetails;
+  final String? url;
+  final int? statusCode;
+
+  ApiException({
+    required this.userMessage,
+    required this.devDetails,
+    this.url,
+    this.statusCode,
+  });
+
+  @override
+  String toString() => userMessage;
+}
+
 class ApiService {
+  static ApiException? lastApiException;
 
   // Live ngrok URL pointing to the backend localhost forwarded by the user
   //static const String baseUrl = 'https://intime.hirelyft.in';
@@ -59,38 +78,77 @@ class ApiService {
     };
   }
 
+  Future<dynamic> _makeRequest(Future<http.Response> Function() requestFn, String endpoint) async {
+    final fullUrl = '$baseUrl$endpoint';
+    try {
+      final response = await requestFn().timeout(const Duration(seconds: 15));
+      return _processResponse(response);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+
+      String userMessage = 'Unable to connect to the server.';
+      String devDetails = 'Error: $e\nAttempted URL: $fullUrl';
+
+      if (e is TimeoutException) {
+        userMessage = 'The request timed out. The server might be busy or slow.';
+      } else if (e.toString().contains('SocketException') || 
+                 e.toString().contains('Connection refused') || 
+                 e.toString().contains('Failed host lookup')) {
+        userMessage = 'Cannot reach the server. Please check your internet connection or verify that the server URL is correct and active.';
+      } else if (e.toString().contains('ClientException')) {
+        userMessage = 'A connection error occurred. Please check your connection.';
+      }
+
+      final apiException = ApiException(
+        userMessage: userMessage,
+        devDetails: devDetails,
+        url: fullUrl,
+      );
+      lastApiException = apiException;
+      throw apiException;
+    }
+  }
+
   Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: await _getHeaders(),
-      body: jsonEncode(body),
+    return _makeRequest(
+      () async => http.post(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: await _getHeaders(),
+        body: jsonEncode(body),
+      ),
+      endpoint,
     );
-    return _processResponse(response);
   }
 
   Future<dynamic> get(String endpoint) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: await _getHeaders(),
+    return _makeRequest(
+      () async => http.get(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: await _getHeaders(),
+      ),
+      endpoint,
     );
-    return _processResponse(response);
   }
 
   Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: await _getHeaders(),
-      body: jsonEncode(body),
+    return _makeRequest(
+      () async => http.put(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: await _getHeaders(),
+        body: jsonEncode(body),
+      ),
+      endpoint,
     );
-    return _processResponse(response);
   }
 
   Future<dynamic> delete(String endpoint) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: await _getHeaders(),
+    return _makeRequest(
+      () async => http.delete(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: await _getHeaders(),
+      ),
+      endpoint,
     );
-    return _processResponse(response);
   }
 
   dynamic _processResponse(http.Response response) {
@@ -102,18 +160,45 @@ class ApiService {
         // Clear local credentials and redirect to login screen
         deleteToken();
         MyApp.navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
-        throw Exception(data['message'] ?? 'Unauthorized: Session expired or invalid. Please login again.');
+        final apiException = ApiException(
+          userMessage: data['message'] ?? 'Unauthorized: Session expired or invalid. Please login again.',
+          devDetails: 'Status: 401 Unauthorized\nURL: ${response.request?.url}\nResponse: ${response.body}',
+          url: response.request?.url.toString(),
+          statusCode: response.statusCode,
+        );
+        lastApiException = apiException;
+        throw apiException;
       } else {
-        throw Exception(data['message'] ?? 'Unknown Error');
+        final apiException = ApiException(
+          userMessage: data['message'] ?? 'The server returned an error (Status ${response.statusCode}).',
+          devDetails: 'Status: ${response.statusCode}\nURL: ${response.request?.url}\nResponse: ${response.body}',
+          url: response.request?.url.toString(),
+          statusCode: response.statusCode,
+        );
+        lastApiException = apiException;
+        throw apiException;
       }
     } catch (e) {
+      if (e is ApiException) rethrow;
       if (e is FormatException) {
         // Handle non-JSON responses (e.g., HTML error pages)
-        throw Exception(
-          'Server Error: ${response.statusCode} - ${response.reasonPhrase}. Please check server logs.',
+        final apiException = ApiException(
+          userMessage: 'The server returned an invalid response format.',
+          devDetails: 'Status: ${response.statusCode} - ${response.reasonPhrase}\nURL: ${response.request?.url}\nBody: ${response.body}\nError: $e',
+          url: response.request?.url.toString(),
+          statusCode: response.statusCode,
         );
+        lastApiException = apiException;
+        throw apiException;
       }
-      rethrow;
+      final apiException = ApiException(
+        userMessage: 'An unexpected error occurred.',
+        devDetails: 'Error: $e\nURL: ${response.request?.url}',
+        url: response.request?.url.toString(),
+        statusCode: response.statusCode,
+      );
+      lastApiException = apiException;
+      throw apiException;
     }
   }
 
@@ -352,96 +437,146 @@ class ApiService {
 
   // Upload
   Future<Map<String, dynamic>> uploadSelfie(XFile file) async {
-    final uri = Uri.parse('$baseUrl/upload/selfie');
-    final request = http.MultipartRequest('POST', uri);
+    final fullUrl = '$baseUrl/upload/selfie';
+    try {
+      final uri = Uri.parse(fullUrl);
+      final request = http.MultipartRequest('POST', uri);
 
-    // Add Authorization header manually (avoid _getHeaders which adds JSON Content-Type)
-    final token = await getToken();
-    if (token != null) {
-      request.headers['Authorization'] = 'Bearer $token';
-    }
+      // Add Authorization header manually (avoid _getHeaders which adds JSON Content-Type)
+      final token = await getToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
 
-    // Add file with explicit Content-Type and ensure filename has an extension
-    final mimeType = _getMediaType(file.name);
-    String fileName = file.name.isEmpty
-        ? 'upload_${DateTime.now().millisecondsSinceEpoch}'
-        : file.name;
+      // Add file with explicit Content-Type and ensure filename has an extension
+      final mimeType = _getMediaType(file.name);
+      String fileName = file.name.isEmpty
+          ? 'upload_${DateTime.now().millisecondsSinceEpoch}'
+          : file.name;
 
-    // On Web, file.name might be 'blob' or have no extension, which multer might reject
-    if (!fileName.contains('.')) {
-      fileName = '$fileName.jpg';
-    }
+      // On Web, file.name might be 'blob' or have no extension, which multer might reject
+      if (!fileName.contains('.')) {
+        fileName = '$fileName.jpg';
+      }
 
-    if (kIsWeb) {
-      final bytes = await file.readAsBytes();
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'selfie',
-          bytes,
-          filename: fileName,
-          contentType: mimeType,
-        ),
+      if (kIsWeb) {
+        final bytes = await file.readAsBytes();
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'selfie',
+            bytes,
+            filename: fileName,
+            contentType: mimeType,
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'selfie',
+            file.path,
+            filename: fileName,
+            contentType: mimeType,
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+      final result = _processResponse(response);
+      return Map<String, dynamic>.from(result);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+
+      String userMessage = 'Unable to upload selfie.';
+      String devDetails = 'Error: $e\nAttempted URL: $fullUrl';
+
+      if (e is TimeoutException) {
+        userMessage = 'The selfie upload timed out. The file might be too large or the server is slow.';
+      } else if (e.toString().contains('SocketException') || 
+                 e.toString().contains('Connection refused') || 
+                 e.toString().contains('Failed host lookup')) {
+        userMessage = 'Cannot reach the server for upload. Please check your internet connection or server status.';
+      }
+
+      final apiException = ApiException(
+        userMessage: userMessage,
+        devDetails: devDetails,
+        url: fullUrl,
       );
-    } else {
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'selfie',
-          file.path,
-          filename: fileName,
-          contentType: mimeType,
-        ),
-      );
+      lastApiException = apiException;
+      throw apiException;
     }
-
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-    return _processResponse(response);
   }
 
   /// Upload a profile picture to the dedicated Jimp-processed endpoint.
   /// Accepts images up to 3 MB. Returns { url, filename }.
   Future<Map<String, dynamic>> uploadProfilePicture(XFile file) async {
-    final uri = Uri.parse('$baseUrl/upload/profile-picture');
-    final request = http.MultipartRequest('POST', uri);
+    final fullUrl = '$baseUrl/upload/profile-picture';
+    try {
+      final uri = Uri.parse(fullUrl);
+      final request = http.MultipartRequest('POST', uri);
 
-    final token = await getToken();
-    if (token != null) {
-      request.headers['Authorization'] = 'Bearer $token';
-    }
+      final token = await getToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
 
-    final mimeType = _getMediaType(file.name);
-    String fileName = file.name.isEmpty
-        ? 'profile_${DateTime.now().millisecondsSinceEpoch}'
-        : file.name;
+      final mimeType = _getMediaType(file.name);
+      String fileName = file.name.isEmpty
+          ? 'profile_${DateTime.now().millisecondsSinceEpoch}'
+          : file.name;
 
-    if (!fileName.contains('.')) {
-      fileName = '$fileName.jpg';
-    }
+      if (!fileName.contains('.')) {
+        fileName = '$fileName.jpg';
+      }
 
-    if (kIsWeb) {
-      final bytes = await file.readAsBytes();
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'profilePicture',
-          bytes,
-          filename: fileName,
-          contentType: mimeType,
-        ),
+      if (kIsWeb) {
+        final bytes = await file.readAsBytes();
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'profilePicture',
+            bytes,
+            filename: fileName,
+            contentType: mimeType,
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'profilePicture',
+            file.path,
+            filename: fileName,
+            contentType: mimeType,
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+      final result = _processResponse(response);
+      return Map<String, dynamic>.from(result);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+
+      String userMessage = 'Unable to upload profile picture.';
+      String devDetails = 'Error: $e\nAttempted URL: $fullUrl';
+
+      if (e is TimeoutException) {
+        userMessage = 'The profile picture upload timed out. The file might be too large or the server is slow.';
+      } else if (e.toString().contains('SocketException') || 
+                 e.toString().contains('Connection refused') || 
+                 e.toString().contains('Failed host lookup')) {
+        userMessage = 'Cannot reach the server for upload. Please check your internet connection or server status.';
+      }
+
+      final apiException = ApiException(
+        userMessage: userMessage,
+        devDetails: devDetails,
+        url: fullUrl,
       );
-    } else {
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'profilePicture',
-          file.path,
-          filename: fileName,
-          contentType: mimeType,
-        ),
-      );
+      lastApiException = apiException;
+      throw apiException;
     }
-
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-    return _processResponse(response);
   }
 
 
@@ -555,44 +690,68 @@ class ApiService {
   }
 
   Future<List<dynamic>> parseHolidaySheet(XFile file) async {
-    final uri = Uri.parse('$baseUrl/holidays/parse-sheet');
-    final request = http.MultipartRequest('POST', uri);
+    final fullUrl = '$baseUrl/holidays/parse-sheet';
+    try {
+      final uri = Uri.parse(fullUrl);
+      final request = http.MultipartRequest('POST', uri);
 
-    final token = await getToken();
-    if (token != null) {
-      request.headers['Authorization'] = 'Bearer $token';
-    }
+      final token = await getToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
 
-    String fileName = file.name.isEmpty
-        ? 'holiday_sheet_${DateTime.now().millisecondsSinceEpoch}'
-        : file.name;
-    if (!fileName.contains('.')) fileName = '$fileName.xlsx';
+      String fileName = file.name.isEmpty
+          ? 'holiday_sheet_${DateTime.now().millisecondsSinceEpoch}'
+          : file.name;
+      if (!fileName.contains('.')) fileName = '$fileName.xlsx';
 
-    if (kIsWeb) {
-      final bytes = await file.readAsBytes();
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'sheet',
-          bytes,
-          filename: fileName,
-          contentType: MediaType('application', 'octet-stream'),
-        ),
+      if (kIsWeb) {
+        final bytes = await file.readAsBytes();
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'sheet',
+            bytes,
+            filename: fileName,
+            contentType: MediaType('application', 'octet-stream'),
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'sheet',
+            file.path,
+            filename: fileName,
+            contentType: MediaType('application', 'octet-stream'),
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+      final result = _processResponse(response);
+      return result['parsed'];
+    } catch (e) {
+      if (e is ApiException) rethrow;
+
+      String userMessage = 'Unable to upload and parse holiday sheet.';
+      String devDetails = 'Error: $e\nAttempted URL: $fullUrl';
+
+      if (e is TimeoutException) {
+        userMessage = 'The sheet upload timed out. The file might be too large or the server is slow.';
+      } else if (e.toString().contains('SocketException') || 
+                 e.toString().contains('Connection refused') || 
+                 e.toString().contains('Failed host lookup')) {
+        userMessage = 'Cannot reach the server for upload. Please check your internet connection or server status.';
+      }
+
+      final apiException = ApiException(
+        userMessage: userMessage,
+        devDetails: devDetails,
+        url: fullUrl,
       );
-    } else {
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'sheet',
-          file.path,
-          filename: fileName,
-          contentType: MediaType('application', 'octet-stream'),
-        ),
-      );
+      lastApiException = apiException;
+      throw apiException;
     }
-
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-    final result = _processResponse(response);
-    return result['parsed'];
   }
 
   Future<List<dynamic>> bulkCreateHolidays(List<Map<String, dynamic>> holidays) async {

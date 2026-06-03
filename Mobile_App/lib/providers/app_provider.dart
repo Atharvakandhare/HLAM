@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/user.dart';
 import '../models/attendance.dart';
@@ -412,6 +413,9 @@ class AppProvider extends ChangeNotifier {
           final service = FlutterBackgroundService();
           final isRunning = await service.isRunning();
           if (!isRunning) {
+            if (defaultTargetPlatform == TargetPlatform.android) {
+              await Permission.ignoreBatteryOptimizations.request();
+            }
             await service.startService();
           }
         }

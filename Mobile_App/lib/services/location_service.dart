@@ -22,6 +22,7 @@ class LocationTrackingService {
         onStart: onStart,
         autoStart: false, // Started only on check-in
         isForegroundMode: true,
+        autoStartOnBoot: true,
         notificationChannelId: 'marketing_tracking_channel',
         initialNotificationTitle: 'Marketing Location Tracking',
         initialNotificationContent: 'Tracking active field movements...',
