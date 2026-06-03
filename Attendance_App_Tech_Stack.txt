@@ -1,0 +1,42 @@
+# Attendance Management App - Technology Stack Overview
+
+This document outlines the core technologies and packages used in the Attendance Management Application, focusing specifically on the Face Recognition and Authentication flows.
+
+## 1. Frontend (Mobile App)
+**Framework**: Flutter (Dart)
+
+### Key Packages for Face Scanning:
+- **camera**: Used for the live camera preview and capturing the high-resolution still images for verification.
+- **google_mlkit_face_detection**: Implements on-device face detection. It identifies if a face is present in the frame, draws the scanning overlay (green box), and automatically triggers the verification process when a face is perfectly positioned.
+- **image_picker**: Allows users to select existing photos from the gallery for face setup or fallback verification.
+
+### Other Core Packages:
+- **provider**: Centralized state management for user data, attendance status, and location.
+- **geolocator & geocoding**: Captures the precise GPS coordinates and human-readable address during login/logout to prevent "proxy" attendance.
+- **flutter_secure_storage**: Securely stores the JWT authentication token on the device.
+
+---
+
+## 2. Backend (Server)
+**Framework**: Node.js with Express.js
+
+### Key Packages for Face Matching:
+- **@vladmandic/face-api**: A powerful implementation of "face-api.js" for Node.js. It uses pre-trained neural networks (SSD Mobilenet v1) to compare face descriptors and calculate the "Euclidean distance" between the live face and the registered face.
+- **canvas**: A Node.js implementation of the HTML5 Canvas API, used to process image buffers for the Face-API.
+- **@tensorflow/tfjs**: The machine learning engine that powers the face recognition models.
+
+### Authentication & Database:
+- **jsonwebtoken (JWT)**: Handles secure session management.
+- **bcryptjs**: Used for hashing user passwords.
+- **Sequelize**: An ORM used to interact with the MySQL database.
+- **multer**: Handles the multipart/form-data for image uploads (Selfies/Face Setup).
+
+---
+
+## 3. Face Verification Logic
+1.  **Detection**: The Mobile App (ML Kit) detects a face in the live stream.
+2.  **Capture**: Once a face is stable, the app captures a high-quality frame.
+3.  **Transmission**: The image is sent to the Node.js backend via a secure API call.
+4.  **Recognition**: The Backend (Face-API) extracts a "Face Descriptor" (a unique mathematical representation of the face).
+5.  **Matching**: The backend calculates the distance between this descriptor and the one from the "Registered Face".
+6.  **Authentication**: If the distance is below the strict threshold (currently set to **0.35**), the user is authenticated.

@@ -1,0 +1,93 @@
+# Implementation Plan - System Admin and Multi-Tenant Access Controls
+
+This plan details the backend and frontend changes required to restrict the System Admin's visibility and management access strictly to their own company's data ("Hirelyft India Pvt. Ltd."), while allowing them to see only specific aggregate counts and admin profiles of other companies. It also ensures that all other tenants can only access their respective company data.
+
+## Proposed Changes
+
+### Backend Controllers
+
+---
+
+#### [MODIFY] [adminController.js](file:///d:/Attendance_Management_App/backend/controllers/adminController.js)
+
+- **`listUsers`**:
+  - Restrict `system_admin` so they can only see all users of their own company (`req.user.companyId`), and only `company_admin` roles from other companies.
+- **`createUser`**:
+  - Prevent `system_admin` from creating non-`company_admin` roles in other companies.
+- **`updateUser`**:
+  - Prevent `system_admin` from modifying non-`company_admin` roles in other companies.
+  - Reject attempts to convert another company's `company_admin` to a non-admin role.
+- **`deleteUser`**:
+  - Restrict `system_admin` from deleting/deactivating users from other companies, unless the user's role is `company_admin`.
+- **`attendanceStats`**:
+  - Restrict stats aggregation to `req.user.companyId` for `system_admin`.
+- **`exportReport`**:
+  - Restrict report generation to `req.user.companyId` for `system_admin`.
+- **`listCompanies`**:
+  - Populate company details with their respective `company_admin` users, teams count, manager count, team leaders count, and other employees count.
+- **`listTeams` / `createTeam`**:
+  - Force `targetCompanyId` to be `req.user.companyId` for `system_admin`, preventing them from managing teams of other companies.
+- **`getCompanySettings` / `updateCompanySettings`**:
+  - Force `targetCompanyId` to be `req.user.companyId` for `system_admin`.
+
+---
+
+#### [MODIFY] [attendanceController.js](file:///d:/Attendance_Management_App/backend/controllers/attendanceController.js)
+
+- **`listAll`**:
+  - Restrict listing to attendance records belonging to users within the requester's company (`req.user.companyId`).
+- **`getById`**:
+  - Ensure that the requested attendance record belongs to a user inside `req.user.companyId`.
+- **`deleteAttendance`**:
+  - Restrict deletion of attendance records to those belonging to users within `req.user.companyId`.
+
+---
+
+#### [MODIFY] [leaveController.js](file:///d:/Attendance_Management_App/backend/controllers/leaveController.js)
+
+- **`getAllLeaves`**:
+  - Restrict `system_admin` to see only leave applications from their own company (`req.user.companyId`).
+- **`updateLeaveStatus`**:
+  - Restrict `system_admin` so they can only approve or reject leave requests for users in their own company.
+
+---
+
+#### [MODIFY] [locationController.js](file:///d:/Attendance_Management_App/backend/controllers/locationController.js)
+
+- **`getMarketingTrail`**:
+  - Restrict tracking: if the target user's `companyId` is not equal to `req.user.companyId`, deny access.
+- **`getActiveMarketingEmployees`**:
+  - Restrict the active list filtering to `req.user.companyId`.
+- **`getAllMarketingEmployees`**:
+  - Restrict the marketing list filtering to `req.user.companyId`.
+
+---
+
+### Frontend Code
+
+---
+
+#### [MODIFY] [App.jsx](file:///d:/Attendance_Management_App/Admin-Web-dashboard/src/App.jsx)
+
+- Update the "Companies Admin" tab list table to display:
+  - Corporate Admins (Name and Email)
+  - Teams Count
+  - Managers Count
+  - Team Leaders Count
+  - Other Employees Count
+- This visual change aligns the frontend presentation with the restricted data format for other companies.
+
+## Verification Plan
+
+### Automated Verification
+- Verify that backend code compiles and tests pass (if any).
+- Run server and check requests.
+
+### Manual Verification
+- Log in as the System Admin (default: `admin@hirelyft.in`, company: `Hirelyft India Pvt. Ltd.`).
+- Verify that on the dashboard, only Hirelyft employees are shown.
+- Go to "Companies Admin" and view the list of registered companies. Check that we see each company's admin list, total teams count, manager count, team leaders count, and employee count.
+- Go to "Employees" and verify only Hirelyft employees are listed.
+- Go to "Leave Requests" and verify only Hirelyft leave applications are displayed.
+- Go to "Marketing Tracker" and verify only Hirelyft marketing employees are trackable.
+- Log in as a Company Admin from another company and verify that they can only access their own company's employees, teams, leaves, etc., and cannot access the Companies Admin tab.

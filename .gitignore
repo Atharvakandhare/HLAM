@@ -1,0 +1,43 @@
+# Root gitignore for Attendance Management App
+
+# Dependency directories
+**/node_modules/
+**/.dart_tool/
+**/.pub-cache/
+**/.pub/
+
+# Build outputs
+**/build/
+**/dist/
+**/dist-ssr/
+
+# Secret files / configs
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+**/*.jks
+**/*.keystore
+
+# Large archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Built application files
+*.apk
+*.aab
+*.ipa
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE configuration files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws

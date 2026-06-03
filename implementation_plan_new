@@ -1,0 +1,111 @@
+# Implementation Plan — Hierarchical Multi-Company, Geofencing, Alarm Reminder, and Calendar App
+
+We will implement a robust multi-company system with hierarchical controls, geofencing coordinates, automated 15-minute background location tracking, check-in/out alarms, birthday animations, and a calendar view for monthly summaries.
+
+---
+
+## 1. Data Model & Database Upgrades
+
+### Model: `CompanySetting` [NEW]
+- `id` (INT, Primary Key)
+- `companyId` (INT, Foreign Key referencing `companies.id`)
+- `checkInTime` (TIME, default "09:00:00")
+- `checkOutTime` (TIME, default "18:00:00")
+- `latitude` (DECIMAL(10, 7), default 0.0)
+- `longitude` (DECIMAL(10, 7), default 0.0)
+- `address` (STRING)
+- `radius` (FLOAT, default 100.0)
+
+### Model: `User` (Additions)
+- `dob` (DATEONLY, Nullable)
+- `state` (STRING, Nullable)
+- `city` (STRING, Nullable)
+- `workMode` (ENUM('Work From Office', 'Work From Home', 'Remote Work'), default 'Work From Office')
+- `workType` (ENUM('Work From Office', 'Field Work', 'Office + Field Work'), Nullable - only for Marketing department)
+
+---
+
+## 2. Proposed Backend Controller & Router Changes
+
+### [MODIFY] [server.js](file:///d:/Attendance_Management_App/backend/server.js)
+- Run Sequelize migrations at startup to alter table schemas (add `dob`, `state`, `city`, `work_mode`, `work_type` to `users` table).
+- Create `company_settings` table.
+- Seed default Hirelyft company location (latitude: 28.6139, longitude: 77.2090 for testing) and times (check-in: "09:00:00", check-out: "18:00:00").
+
+### [MODIFY] [authController.js](file:///d:/Attendance_Management_App/backend/controllers/authController.js)
+- Include `dob`, `state`, `city`, `workMode`, `workType`, and the company's coordinates/times in the login and `/auth/me` responses.
+
+### [MODIFY] [adminController.js](file:///d:/Attendance_Management_App/backend/controllers/adminController.js)
+- Update `createUser` and `updateUser` to validate Date of Birth, State, City, Work Mode, Work Type, and Department.
+- Add endpoints `GET /admin/company-settings` and `PUT /admin/company-settings` for Company Admins to manage check-in/out times and coordinates.
+
+### [MODIFY] [attendanceController.js](file:///d:/Attendance_Management_App/backend/controllers/attendanceController.js)
+- Update `checkIn` geofencing check:
+  - If user's `workMode` is `'Work From Office'`, verify they are within `100 meters` of their company's registered coordinates.
+  - Calculate distance using the Haversine formula.
+- Update `checkOut` half-day logic:
+  - If an early checkout is detected, calculate the remaining shift time.
+  - If the remaining time is **greater than half of the total shift time** (e.g. remaining time > 5 hours from a 10-hour shift), mark attendance status as `'half_day'` (added to ENUM).
+
+### [MODIFY] [locationRoutes.js](file:///d:/Attendance_Management_App/backend/routes/locationRoutes.js)
+- Ensure the background location tracking only activates if the employee's department is `'marketing'` and their work type is `'Field Work'` or `'Office + Field Work'`.
+
+---
+
+## 3. Proposed Flutter Mobile Application Changes
+
+### [MODIFY] [user.dart](file:///d:/Attendance_Management_App/Mobile_App/lib/models/user.dart)
+- Map new fields: `dob`, `state`, `city`, `workMode`, `workType`, `companyCheckInTime`, `companyCheckOutTime`, `companyLatitude`, `companyLongitude`, `companyRadius`.
+
+### [MODIFY] [add_employee_screen.dart](file:///d:/Attendance_Management_App/Mobile_App/lib/screens/add_employee_screen.dart)
+- Replace text inputs with select dropdowns:
+  - **State & City**: Predefined list of Indian states (Maharashtra, Karnataka, Delhi, etc.) and matching cities (Mumbai, Pune, Bangalore, New Delhi, etc.).
+  - **Departments**: Predefined list (IT, HR, Marketing, Sales, Operations, Finance, Support, Other).
+  - **Work Mode**: Predefined list (Work From Office, Work From Home, Remote Work).
+- Add conditional field: If department is `'Marketing'`, show a **Work Type** selector (Work From Office, Field Work, Office + Field Work).
+- Add Date picker for **Date of Birth**.
+
+### [MODIFY] [dashboard_screen.dart](file:///d:/Attendance_Management_App/Mobile_App/lib/screens/dashboard_screen.dart)
+- **Admin App Access**: Enable login and metrics view for `system_admin` and `company_admin` roles.
+- **Birthday Card**:
+  - Check if today matches any colleague's birthday (or current user's birthday).
+  - If yes, display a card: *"Colleague Name's Birthday Today! 🎂"* with birthday cake icons, continuous celebratory blinking, and floating emoji animations.
+- **Check-In/Out Alarm**:
+  - Implement a daily alarm checking loop.
+  - Compares device time with the company's set check-in/out times.
+  - If target time is reached and user hasn't checked in/out, trigger a fullscreen alarm alert: `"Reminder!!! Please Check-In/Check-Out, according to the time."`
+  - Allows stopping via a "Cross" button. Stops automatically after 60 seconds.
+- **Monthly Summary Calendar**:
+  - Wrap the summary in a neat, minimized **Calendar View** (using `table_calendar` or a custom custom lightweight grid).
+  - Highlight days: **Green dot** for present, **Red dot** for absent, **Orange dot** for half-day.
+  - By default, mark Saturdays/Sundays as holidays (gray/yellow) but allow check-ins if they work.
+  - Let users swipe between months to view previous and upcoming attendance.
+
+### [MODIFY] [location_service.dart](file:///d:/Attendance_Management_App/Mobile_App/lib/services/location_service.dart)
+- Automatically fetch location every 15 minutes if `user.department == 'marketing'` and `user.workType` is `'Field Work'` or `'Office + Field Work'`, without requiring check-in.
+
+---
+
+## 4. Admin Web Dashboard Features (Admin-Web-dashboard)
+
+In React.js, build views to support:
+1. **System Admin panel**: Add companies, set custom admins, view global metrics.
+2. **Company Admin panel**:
+   - Manage company check-in/out times and map coordinates.
+   - Register employees with DOB, State, City, Work Mode, and Work Type.
+   - Track live locations of Marketing employees.
+   - View calendar grid of all employees' monthly attendance summaries.
+
+---
+
+## Verification Plan
+
+### Automated
+- Compile and analyze Flutter app with `flutter analyze`.
+- Build the Web Dashboard.
+
+### Manual
+1. **Geofencing Test**: Set work mode to "Work From Office". Attempt check-in outside 100m radius -> confirm rejection. Attempt check-in within 100m -> confirm success.
+2. **Alarm Test**: Set company check-in time 2 minutes into the future. Let device idle -> confirm alarm triggers. Cross click -> stops. Idle -> stops after 60s.
+3. **Half Day Test**: Check out early such that shift is < 50% completed -> verify status marks as "Half Day" and monthly summary shows orange dot on calendar date.
+4. **Birthday Test**: Set an employee's birthday to today -> confirm birthday card animations on dashboard.

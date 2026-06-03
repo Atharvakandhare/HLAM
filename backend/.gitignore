@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Uploaded files (keep the directory structure, but ignore actual uploads)
+uploads/selfies/*
+!uploads/selfies/.gitkeep
+
+# Logs
+*.log
+error.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
