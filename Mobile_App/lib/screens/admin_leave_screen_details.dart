@@ -17,6 +17,14 @@ class AdminLeaveDetailsScreen extends StatefulWidget {
 class _AdminLeaveDetailsScreenState extends State<AdminLeaveDetailsScreen> {
   bool _isProcessing = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AppProvider>(context, listen: false).fetchLeaveQuota(userId: widget.leave['userId']);
+    });
+  }
+
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'approved':
@@ -215,6 +223,44 @@ class _AdminLeaveDetailsScreenState extends State<AdminLeaveDetailsScreen> {
 
     final statusColor = _getStatusColor(status);
     final bool isPending = status.toLowerCase() == 'pending';
+    final bool isApproved = status.toLowerCase() == 'approved';
+
+    final isPaidRequest = leave['isPaidRequest'] ?? false;
+    final allowNextMonthQuota = leave['allowNextMonthQuota'] ?? false;
+
+    final quota = Provider.of<AppProvider>(context).leaveQuota;
+    final int availableThisMonth = (quota?['availableThisMonth'] as num?)?.toInt() ?? 0;
+    final int availableNextMonth = (quota?['availableNextMonth'] as num?)?.toInt() ?? 0;
+
+    int previewPaid = 0;
+    int previewBorrowed = 0;
+    int previewUnpaid = totalDays;
+
+    if (isApproved) {
+      previewPaid = (leave['paidDays'] as num?)?.toInt() ?? 0;
+      previewBorrowed = (leave['nextMonthPaidDays'] as num?)?.toInt() ?? 0;
+      previewUnpaid = (leave['unpaidDays'] as num?)?.toInt() ?? totalDays;
+    } else if (isPaidRequest) {
+      if (totalDays <= availableThisMonth) {
+        previewPaid = totalDays;
+        previewBorrowed = 0;
+        previewUnpaid = 0;
+      } else {
+        previewPaid = availableThisMonth;
+        final int rem = totalDays - availableThisMonth;
+        if (allowNextMonthQuota) {
+          previewBorrowed = rem <= availableNextMonth ? rem : availableNextMonth;
+          previewUnpaid = rem - previewBorrowed;
+        } else {
+          previewBorrowed = 0;
+          previewUnpaid = rem;
+        }
+      }
+    } else {
+      previewPaid = 0;
+      previewBorrowed = 0;
+      previewUnpaid = totalDays;
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -429,7 +475,109 @@ class _AdminLeaveDetailsScreenState extends State<AdminLeaveDetailsScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Card 3: Statement / Reason for Leave
+                    // Card 3: Paid Leave Policy & Allocation Preview
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.info_outline, size: 16, color: Color(0xFF2563EB)),
+                              const SizedBox(width: 8),
+                              Text(
+                                isApproved ? 'Paid Leave Allocation Details' : 'Paid Leave & Allocation Preview',
+                                style: const TextStyle(color: Color(0xFF1E293B), fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Divider(height: 1, color: Color(0xFFF1F4F9)),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Requested as Paid Leave:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                              Text(isPaidRequest ? 'YES' : 'NO', style: TextStyle(color: isPaidRequest ? const Color(0xFF16A34A) : Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Allow Borrowing Next Month:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                              Text(allowNextMonthQuota ? 'YES' : 'NO', style: TextStyle(color: allowNextMonthQuota ? const Color(0xFF2563EB) : Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
+                          ),
+                          if (!isApproved) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Applicant\'s Quota (This Month):', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                                Text('$availableThisMonth Days', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 13)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Applicant\'s Quota (Next Month):', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                                Text('$availableNextMonth Days', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 13)),
+                              ],
+                            ),
+                          ],
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Divider(height: 1, color: Color(0xFFF1F4F9)),
+                          ),
+                          Text(
+                            isApproved ? 'ALLOCATION DETAILS:' : 'EXPECTED ALLOCATION:',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Paid Days:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                              Text('$previewPaid Days', style: const TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Borrowed Next Month:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                              Text('$previewBorrowed Days', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Unpaid Days:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                              Text('$previewUnpaid Days', style: const TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Card 4: Statement / Reason for Leave
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
@@ -475,7 +623,7 @@ class _AdminLeaveDetailsScreenState extends State<AdminLeaveDetailsScreen> {
                       ),
                     ),
                     
-                    // Card 4: Admin Feedback (if already processed)
+                    // Card 5: Admin Feedback (if already processed)
                     if (adminComment != null && adminComment.trim().isNotEmpty) ...[
                       const SizedBox(height: 20),
                       Container(

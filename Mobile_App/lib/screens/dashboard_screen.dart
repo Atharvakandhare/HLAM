@@ -1752,18 +1752,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Select your mood and energy level before checking in',
+                  'Select your mood and energy level before checking in (both required)',
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Mood',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF64748B),
-                    letterSpacing: 0.8,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      'Mood',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF64748B),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '*',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -1812,14 +1825,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   }).toList(),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Energy Level',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF64748B),
-                    letterSpacing: 0.8,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      'Energy Level',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF64748B),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '*',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -1878,6 +1904,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
+                      if (selectedMood == null) {
+                        AppMessages.showError(
+                          context,
+                          'Please select your mood to proceed with check-in.',
+                        );
+                        return;
+                      }
+                      if (selectedEnergy == null) {
+                        AppMessages.showError(
+                          context,
+                          'Please select your energy level to proceed with check-in.',
+                        );
+                        return;
+                      }
                       Navigator.pop(ctx);
                       Navigator.push(
                         context,

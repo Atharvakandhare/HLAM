@@ -355,20 +355,20 @@ class _AdminLeavesScreenState extends State<AdminLeavesScreen> {
     final bool isPending = status.toLowerCase() == 'pending';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -384,7 +384,7 @@ class _AdminLeavesScreenState extends State<AdminLeavesScreen> {
               }
             },
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -392,14 +392,14 @@ class _AdminLeavesScreenState extends State<AdminLeavesScreen> {
                   Row(
                     children: [
                       CircleAvatar(
-                        radius: 24,
+                        radius: 18,
                         backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.08),
                         child: Text(
                           employeeName.isNotEmpty ? employeeName[0].toUpperCase() : 'E',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF2563EB)),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF2563EB)),
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,22 +407,22 @@ class _AdminLeavesScreenState extends State<AdminLeavesScreen> {
                             Text(
                               employeeName,
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF0F172A),
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF2563EB).withValues(alpha: 0.06),
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 "$department  •  ID: $empId",
                                 style: const TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 9,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF2563EB),
                                 ),
@@ -434,16 +434,16 @@ class _AdminLeavesScreenState extends State<AdminLeavesScreen> {
                       
                       // Status pill
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: statusColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: statusColor.withValues(alpha: 0.2), width: 1),
                         ),
                         child: Text(
                           status.toUpperCase(),
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 8,
                             fontWeight: FontWeight.bold,
                             color: statusColor,
                             letterSpacing: 0.5,
@@ -452,61 +452,61 @@ class _AdminLeavesScreenState extends State<AdminLeavesScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   const Divider(height: 1, color: Color(0xFFF1F4F9)),
-                  const SizedBox(height: 16),
-
+                  const SizedBox(height: 10),
+ 
                   // Dates range stats block
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFF2563EB).withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.date_range_rounded, size: 18, color: Color(0xFF2563EB)),
-                        const SizedBox(width: 10),
+                        const Icon(Icons.date_range_rounded, size: 14, color: Color(0xFF2563EB)),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             formattedDates,
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF0F172A),
                             ),
                           ),
                         ),
-                        Icon(Icons.arrow_forward_ios, size: 12, color: const Color(0xFF2563EB).withValues(alpha: 0.5)),
+                        Icon(Icons.arrow_forward_ios, size: 10, color: const Color(0xFF2563EB).withValues(alpha: 0.5)),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-
+                  const SizedBox(height: 10),
+ 
                   // Reason Section
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.chat_bubble_outline_rounded, size: 15, color: const Color(0xFF2563EB).withValues(alpha: 0.6)),
-                      const SizedBox(width: 8),
+                      Icon(Icons.chat_bubble_outline_rounded, size: 12, color: const Color(0xFF2563EB).withValues(alpha: 0.6)),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
                               'Reason:',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Text(
                               reason,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 13.5,
+                                fontSize: 12.5,
                                 color: Color(0xFF0F172A),
                                 fontWeight: FontWeight.w500,
-                                height: 1.4,
+                                height: 1.3,
                               ),
                             ),
                           ],
@@ -514,28 +514,28 @@ class _AdminLeavesScreenState extends State<AdminLeavesScreen> {
                       ),
                     ],
                   ),
-
+ 
                   // Admin Comment
                   if (adminComment != null && adminComment.trim().isNotEmpty) ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                     const Divider(height: 1, color: Color(0xFFF1F4F9)),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.feedback_outlined, size: 16, color: statusColor),
-                          const SizedBox(width: 8),
+                          Icon(Icons.feedback_outlined, size: 12, color: statusColor),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               adminComment,
                               style: const TextStyle(
-                                fontSize: 12.5,
+                                fontSize: 11.5,
                                 color: Color(0xFF0F172A),
                                 fontStyle: FontStyle.italic,
                               ),
@@ -545,39 +545,39 @@ class _AdminLeavesScreenState extends State<AdminLeavesScreen> {
                       ),
                     ),
                   ],
-
+ 
                   // Action Buttons if pending
                   if (isPending) ...[
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () => _showActionDialog(context, leave, 'rejected'),
-                            icon: const Icon(Icons.close, size: 18, color: Color(0xFFDC2626)),
-                            label: const Text('Reject', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold, fontSize: 14)),
+                            icon: const Icon(Icons.close, size: 14, color: Color(0xFFDC2626)),
+                            label: const Text('Reject', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold, fontSize: 12)),
                             style: OutlinedButton.styleFrom(
                               backgroundColor: const Color(0xFFFFEBEE),
                               side: BorderSide.none,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () async {
                               _showActionDialog(context, leave, 'approved');
                             },
-                            icon: const Icon(Icons.check, size: 18, color: Colors.white),
-                            label: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                            icon: const Icon(Icons.check, size: 14, color: Colors.white),
+                            label: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF16A34A),
-                              elevation: 2,
-                              shadowColor: const Color(0xFF16A34A).withValues(alpha: 0.3),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              elevation: 1,
+                              shadowColor: const Color(0xFF16A34A).withValues(alpha: 0.2),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
                           ),
                         ),

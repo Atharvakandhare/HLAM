@@ -21,6 +21,11 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
   late TextEditingController _lngController;
   late TextEditingController _addressController;
   late TextEditingController _radiusController;
+  late TextEditingController _monthlyPaidLeavesController;
+  late TextEditingController _yearlyPaidLeavesController;
+
+  int? _selectedRefreshMonth;
+  int? _selectedRefreshDay;
 
   bool _loadingSettings = true;
   bool _fetchingLocation = false;
@@ -38,6 +43,11 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
     _lngController = TextEditingController();
     _addressController = TextEditingController();
     _radiusController = TextEditingController();
+    _monthlyPaidLeavesController = TextEditingController();
+    _yearlyPaidLeavesController = TextEditingController();
+
+    _selectedRefreshMonth = 1;
+    _selectedRefreshDay = 1;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadCompanySettings();
@@ -52,6 +62,8 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
     _lngController.dispose();
     _addressController.dispose();
     _radiusController.dispose();
+    _monthlyPaidLeavesController.dispose();
+    _yearlyPaidLeavesController.dispose();
     super.dispose();
   }
 
@@ -74,6 +86,14 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
       _lngController.text = provider.officeLongitude?.toString() ?? '0.0';
       _addressController.text = provider.officeAddress ?? '';
       _radiusController.text = provider.geofencingRadius?.toString() ?? '100.0';
+      
+      _monthlyPaidLeavesController.text = provider.monthlyPaidLeaves?.toString() ?? '0';
+      _yearlyPaidLeavesController.text = provider.yearlyPaidLeaves?.toString() ?? '0';
+      
+      setState(() {
+        _selectedRefreshMonth = provider.leavesRefreshMonth ?? 1;
+        _selectedRefreshDay = provider.leavesRefreshDay ?? 1;
+      });
     } catch (e) {
       if (mounted) {
         AppMessages.showError(context, 'Failed to load settings: $e');
@@ -86,7 +106,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
   }
 
   TimeOfDay _parseTimeString(String timeStr) {
-    // Expected formats: "HH:mm:ss" or "HH:mm"
     try {
       final parts = timeStr.split(':');
       if (parts.length >= 2) {
@@ -143,7 +162,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
   Future<void> _fetchCurrentLiveLocation() async {
     setState(() => _fetchingLocation = true);
     try {
-      // Check service and request permission
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         throw Exception('Location services are disabled on your device.');
@@ -171,7 +189,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
       _latController.text = position.latitude.toString();
       _lngController.text = position.longitude.toString();
 
-      // Reverse geocode to find address
       try {
         await setLocaleIdentifier("en_US");
         final placemarks = await placemarkFromCoordinates(
@@ -230,6 +247,10 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
         longitude: double.tryParse(_lngController.text),
         address: _addressController.text.trim(),
         radius: double.tryParse(_radiusController.text),
+        monthlyPaidLeaves: int.tryParse(_monthlyPaidLeavesController.text),
+        yearlyPaidLeaves: int.tryParse(_yearlyPaidLeavesController.text),
+        leavesRefreshMonth: _selectedRefreshMonth,
+        leavesRefreshDay: _selectedRefreshDay,
       );
 
       if (mounted) {
@@ -286,6 +307,13 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
                       _buildSectionHeader(Icons.my_location_rounded, 'Geofencing Settings'),
                       const SizedBox(height: 12),
                       _buildLocationCard(),
+
+                      const SizedBox(height: 24),
+
+                      // Leaves Policy Section
+                      _buildSectionHeader(Icons.event_note_rounded, 'Leaves Policy Settings'),
+                      const SizedBox(height: 12),
+                      _buildLeavesPolicyCard(),
                       
                       const SizedBox(height: 32),
                       
@@ -421,7 +449,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // GPS Lock Premium Button
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -463,7 +490,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
           
           const SizedBox(height: 20),
           
-          // Lat/Lng row
           Row(
             children: [
               Expanded(
@@ -496,7 +522,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
           
           const SizedBox(height: 16),
           
-          // Address field
           _buildTextField(
             label: 'Office Street Address',
             controller: _addressController,
@@ -510,7 +535,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
           
           const SizedBox(height: 16),
           
-          // Geofencing Radius
           _buildTextField(
             label: 'Geofence Radius (meters)',
             controller: _radiusController,
@@ -521,6 +545,138 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
               if (double.tryParse(v) == null) return 'Invalid radius';
               return null;
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeavesPolicyCard() {
+    final months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField(
+                  label: 'Monthly Paid Leaves',
+                  controller: _monthlyPaidLeavesController,
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Required';
+                    if (int.tryParse(v) == null) return 'Invalid integer';
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildTextField(
+                  label: 'Yearly Paid Leaves Limit',
+                  controller: _yearlyPaidLeavesController,
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Required';
+                    if (int.tryParse(v) == null) return 'Invalid integer';
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Leaves Refresh Anniversary Date',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _selectedRefreshMonth,
+                      items: List.generate(12, (index) {
+                        return DropdownMenuItem<int>(
+                          value: index + 1,
+                          child: Text(months[index]),
+                        );
+                      }),
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedRefreshMonth = val;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _selectedRefreshDay,
+                      items: List.generate(31, (index) {
+                        return DropdownMenuItem<int>(
+                          value: index + 1,
+                          child: Text('Day ${index + 1}'),
+                        );
+                      }),
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedRefreshDay = val;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Employees\' carryover leaves reset to 0 and refresh starting from this month and day every year.',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+              height: 1.4,
+            ),
           ),
         ],
       ),

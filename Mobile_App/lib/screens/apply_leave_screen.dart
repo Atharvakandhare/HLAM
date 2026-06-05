@@ -20,6 +20,8 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
   bool _isSubmitting = false;
+  bool _isPaidRequest = false;
+  bool _allowNextMonthQuota = false;
 
   @override
   void initState() {
@@ -27,6 +29,8 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
     if (widget.leave != null) {
       final leave = widget.leave;
       _reasonController.text = leave['reason'] ?? '';
+      _isPaidRequest = leave['isPaidRequest'] ?? false;
+      _allowNextMonthQuota = leave['allowNextMonthQuota'] ?? false;
       try {
         if (leave['startDate'] != null) {
           _startDate = DateTime.parse(leave['startDate']);
@@ -146,9 +150,17 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
           startStr,
           endStr,
           _reasonController.text.trim(),
+          isPaidRequest: _isPaidRequest,
+          allowNextMonthQuota: _allowNextMonthQuota,
         );
       } else {
-        await provider.applyLeave(startStr, endStr, _reasonController.text.trim());
+        await provider.applyLeave(
+          startStr,
+          endStr,
+          _reasonController.text.trim(),
+          isPaidRequest: _isPaidRequest,
+          allowNextMonthQuota: _allowNextMonthQuota,
+        );
       }
       
       if (mounted) {
@@ -174,6 +186,9 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isEdit = widget.leave != null;
+    final provider = Provider.of<AppProvider>(context);
+    final quota = provider.leaveQuota;
+    final availableThisMonth = quota?['availableThisMonth'] ?? 0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -246,6 +261,33 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                if (quota != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Color(0xFF2563EB), size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Available Paid Leaves: $availableThisMonth Days this month',
+                          style: const TextStyle(
+                            color: Color(0xFF2563EB),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Date Fields Row
                 Row(
@@ -409,6 +451,91 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
                     }
                     return null;
                   },
+                ),
+                const SizedBox(height: 24),
+
+                // Paid Leave options card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.grey.shade100),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.event_available_rounded, color: Color(0xFF2563EB), size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Apply as Paid Leave',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Switch(
+                            value: _isPaidRequest,
+                            onChanged: (val) {
+                              setState(() {
+                                _isPaidRequest = val;
+                                if (!val) {
+                                  _allowNextMonthQuota = false;
+                                }
+                              });
+                            },
+                            activeThumbColor: const Color(0xFF2563EB),
+                          ),
+                        ],
+                      ),
+                      if (_isPaidRequest) ...[
+                        const Divider(height: 20, color: Color(0xFFF1F4F9)),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.redo_rounded, color: Color(0xFF2563EB), size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Borrow from Next Month',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Switch(
+                              value: _allowNextMonthQuota,
+                              onChanged: (val) {
+                                setState(() {
+                                  _allowNextMonthQuota = val;
+                                });
+                              },
+                              activeThumbColor: const Color(0xFF2563EB),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 32),
 

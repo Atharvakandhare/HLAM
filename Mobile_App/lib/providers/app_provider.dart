@@ -67,6 +67,9 @@ class AppProvider extends ChangeNotifier {
   Position? _currentPosition;
   Position? get currentPosition => _currentPosition;
 
+  Map<String, dynamic>? _leaveQuota;
+  Map<String, dynamic>? get leaveQuota => _leaveQuota;
+
   // --- Employee Management ---
   List<User> get employees => _employees;
 
@@ -637,6 +640,16 @@ class AppProvider extends ChangeNotifier {
   final List<dynamic> _leaves = [];
   List<dynamic> get leaves => _leaves;
 
+  Future<void> fetchLeaveQuota({int? userId}) async {
+    try {
+      final quota = await _apiService.fetchLeaveQuota(userId: userId);
+      _leaveQuota = quota;
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error fetching leave quota: $e");
+    }
+  }
+
   Future<void> fetchMyLeaves() async {
     _isLoading = true;
     _safeNotify();
@@ -645,6 +658,8 @@ class AppProvider extends ChangeNotifier {
       _leaves.clear();
       _leaves.addAll(data);
       _calculateLocalStats();
+      // Fetch leave quota as well
+      await fetchLeaveQuota();
     } catch (e) {
       debugPrint("Error fetching my leaves: $e");
     } finally {
@@ -668,12 +683,14 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> applyLeave(String startDate, String endDate, String reason) async {
+  Future<void> applyLeave(String startDate, String endDate, String reason, {bool isPaidRequest = false, bool allowNextMonthQuota = false}) async {
     try {
       await _apiService.applyLeave({
         'startDate': startDate,
         'endDate': endDate,
         'reason': reason,
+        'isPaidRequest': isPaidRequest,
+        'allowNextMonthQuota': allowNextMonthQuota,
       });
       await fetchMyLeaves();
     } catch (e) {
@@ -690,12 +707,14 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateLeave(int id, String startDate, String endDate, String reason) async {
+  Future<void> updateLeave(int id, String startDate, String endDate, String reason, {bool? isPaidRequest, bool? allowNextMonthQuota}) async {
     try {
       await _apiService.updateLeave(id, {
         'startDate': startDate,
         'endDate': endDate,
         'reason': reason,
+        if (isPaidRequest != null) 'isPaidRequest': isPaidRequest,
+        if (allowNextMonthQuota != null) 'allowNextMonthQuota': allowNextMonthQuota,
       });
       await fetchMyLeaves();
     } catch (e) {
@@ -945,6 +964,18 @@ class AppProvider extends ChangeNotifier {
   double? _geofencingRadius;
   double? get geofencingRadius => _geofencingRadius;
 
+  int? _monthlyPaidLeaves;
+  int? get monthlyPaidLeaves => _monthlyPaidLeaves;
+
+  int? _yearlyPaidLeaves;
+  int? get yearlyPaidLeaves => _yearlyPaidLeaves;
+
+  int? _leavesRefreshMonth;
+  int? get leavesRefreshMonth => _leavesRefreshMonth;
+
+  int? _leavesRefreshDay;
+  int? get leavesRefreshDay => _leavesRefreshDay;
+
   Future<void> fetchCompanySettings() async {
     _isLoading = true;
     _safeNotify();
@@ -958,6 +989,10 @@ class AppProvider extends ChangeNotifier {
         _officeLongitude = s['longitude'] != null ? double.tryParse(s['longitude'].toString()) : null;
         _officeAddress = s['address'];
         _geofencingRadius = s['radius'] != null ? double.tryParse(s['radius'].toString()) : null;
+        _monthlyPaidLeaves = s['monthlyPaidLeaves'] ?? s['monthly_paid_leaves'];
+        _yearlyPaidLeaves = s['yearlyPaidLeaves'] ?? s['yearly_paid_leaves'];
+        _leavesRefreshMonth = s['leavesRefreshMonth'] ?? s['leaves_refresh_month'];
+        _leavesRefreshDay = s['leavesRefreshDay'] ?? s['leaves_refresh_day'];
       }
     } catch (e) {
       debugPrint("Error fetching company settings: $e");
@@ -974,6 +1009,10 @@ class AppProvider extends ChangeNotifier {
     double? longitude,
     String? address,
     double? radius,
+    int? monthlyPaidLeaves,
+    int? yearlyPaidLeaves,
+    int? leavesRefreshMonth,
+    int? leavesRefreshDay,
   }) async {
     _isLoading = true;
     _safeNotify();
@@ -985,6 +1024,10 @@ class AppProvider extends ChangeNotifier {
         if (longitude != null) 'longitude': longitude,
         if (address != null) 'address': address,
         if (radius != null) 'radius': radius,
+        if (monthlyPaidLeaves != null) 'monthlyPaidLeaves': monthlyPaidLeaves,
+        if (yearlyPaidLeaves != null) 'yearlyPaidLeaves': yearlyPaidLeaves,
+        if (leavesRefreshMonth != null) 'leavesRefreshMonth': leavesRefreshMonth,
+        if (leavesRefreshDay != null) 'leavesRefreshDay': leavesRefreshDay,
       });
       if (response['settings'] != null) {
         final s = response['settings'];
@@ -994,6 +1037,10 @@ class AppProvider extends ChangeNotifier {
         _officeLongitude = s['longitude'] != null ? double.tryParse(s['longitude'].toString()) : null;
         _officeAddress = s['address'];
         _geofencingRadius = s['radius'] != null ? double.tryParse(s['radius'].toString()) : null;
+        _monthlyPaidLeaves = s['monthlyPaidLeaves'] ?? s['monthly_paid_leaves'];
+        _yearlyPaidLeaves = s['yearlyPaidLeaves'] ?? s['yearly_paid_leaves'];
+        _leavesRefreshMonth = s['leavesRefreshMonth'] ?? s['leaves_refresh_month'];
+        _leavesRefreshDay = s['leavesRefreshDay'] ?? s['leaves_refresh_day'];
       }
     } catch (e) {
       debugPrint("Error updating company settings: $e");
