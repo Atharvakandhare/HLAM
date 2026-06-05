@@ -610,6 +610,13 @@ class ApiService {
     await put('/leaves/update/$id', data);
   }
 
+  Future<Map<String, dynamic>> fetchLeaveQuota({int? userId}) async {
+    final response = await post('/leaves/quota', {
+      if (userId != null) 'userId': userId,
+    });
+    return Map<String, dynamic>.from(response['quota']);
+  }
+
   // Location Tracking APIs
   Future<List<dynamic>> getMarketingTrail(int userId, {String? date}) async {
     String endpoint = '/location/trail/$userId';
@@ -800,6 +807,94 @@ class ApiService {
       'longitude': longitude,
       if (address != null) 'address': address,
     });
+  }
+
+  /// Download the bulk employee Excel template
+  Future<List<int>> downloadEmployeeTemplate() async {
+    final fullUrl = '$baseUrl/admin/users/template';
+    try {
+      final token = await getToken();
+      final response = await http.get(
+        Uri.parse(fullUrl),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      } else {
+        throw ApiException(
+          userMessage: 'Failed to download employee template.',
+          devDetails: 'Status: ${response.statusCode}',
+          url: fullUrl,
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        userMessage: 'Error downloading employee template.',
+        devDetails: 'Error: $e',
+        url: fullUrl,
+      );
+    }
+  }
+
+  /// Bulk upload users spreadsheet
+  Future<Map<String, dynamic>> bulkUploadEmployees(List<int> fileBytes, String fileName) async {
+    final fullUrl = '$baseUrl/admin/users/bulk-upload';
+    try {
+      final uri = Uri.parse(fullUrl);
+      final request = http.MultipartRequest('POST', uri);
+
+      final token = await getToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Determine content type based on extension
+      final ext = fileName.split('.').last.toLowerCase();
+      MediaType mediaType;
+      if (ext == 'csv') {
+        mediaType = MediaType('text', 'csv');
+      } else if (ext == 'xls') {
+        mediaType = MediaType('application', 'vnd.ms-excel');
+      } else {
+        mediaType = MediaType('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      }
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: fileName,
+          contentType: mediaType,
+        ),
+      );
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return Map<String, dynamic>.from(decoded);
+      } else {
+        throw ApiException(
+          userMessage: decoded['message'] ?? 'Failed to upload spreadsheet.',
+          devDetails: 'Status: ${response.statusCode}\nResponse: ${response.body}',
+          url: fullUrl,
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        userMessage: 'Unable to connect to the server or upload spreadsheet.',
+        devDetails: 'Error: $e',
+        url: fullUrl,
+      );
+    }
   }
 }
 
