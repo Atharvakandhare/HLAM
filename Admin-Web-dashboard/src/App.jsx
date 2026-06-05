@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 const API_BASE = 'https://intime.hirelyft.in/api';
+const SERVER_BASE = API_BASE.replace('/api', '');
 
 const INDIAN_STATES_CITIES = {
   "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Thane", "Nashik"],
@@ -49,6 +50,11 @@ function App() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
+  const [bulkError, setBulkError] = useState('');
 
   // Form states for Creation/Edit
   const [editingUser, setEditingUser] = useState(null);
@@ -61,6 +67,7 @@ function App() {
   const [companyForm, setCompanyForm] = useState({ name: '', adminName: '', adminEmail: '', adminPassword: '' });
   const [teamForm, setTeamForm] = useState({ type: 'IT Team', customName: '' });
   const [selectedLeave, setSelectedLeave] = useState(null);
+  const [selectedLeaveQuota, setSelectedLeaveQuota] = useState(null);
   const [leaveComment, setLeaveComment] = useState('');
 
   // Calendar Modal details
@@ -636,6 +643,59 @@ function App() {
     }
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/template`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to download template');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'employees_template.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || 'Error downloading template');
+    }
+  };
+
+  const handleBulkUpload = async (e) => {
+    e.preventDefault();
+    if (!bulkFile) {
+      setBulkError('Please select a file to upload.');
+      return;
+    }
+    setBulkUploading(true);
+    setBulkError('');
+    setBulkResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', bulkFile);
+      const res = await fetch(`${API_BASE}/admin/users/bulk-upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBulkResult(data);
+        if (data.insertedCount > 0) {
+          fetchUsers();
+        }
+      } else {
+        setBulkError(data.message || 'Bulk upload failed.');
+      }
+    } catch (err) {
+      setBulkError('Connection error. Failed to upload file.');
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
   const openAddUserModal = () => {
     setEditingUser(null);
     setUserForm({
@@ -980,7 +1040,7 @@ function App() {
         {user && (
           <div className="sidebar-user">
             <img 
-              src={user.profilePicture ? `https://intime.hirelyft.in${user.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
+              src={user.profilePicture ? `${SERVER_BASE}${user.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
               alt="Avatar" 
               className="user-avatar" 
             />
@@ -1374,7 +1434,7 @@ function App() {
                             c.admins.map(admin => (
                               <div key={admin.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                                 <img
-                                  src={admin.profilePicture ? `https://intime.hirelyft.in${admin.profilePicture}` : "https://avatar.iran.liara.run/public/boy"}
+                                  src={admin.profilePicture ? `${SERVER_BASE}${admin.profilePicture}` : "https://avatar.iran.liara.run/public/boy"}
                                   alt=""
                                   style={{ width: '22px', height: '22px', borderRadius: '50%' }}
                                 />
@@ -1554,7 +1614,7 @@ function App() {
                   />
                 </div>
 
-                <div className="form-group">
+                 <div className="form-group">
                   <label>Office Reference Address</label>
                   <textarea 
                     value={companySettings.address || ''} 
@@ -1563,7 +1623,66 @@ function App() {
                   />
                 </div>
 
-                <button type="submit" className="btn-primary">Save Settings</button>
+                <div style={{ borderTop: '1px solid var(--card-border)', marginTop: '20px', paddingTop: '20px' }}>
+                  <h4 style={{ marginBottom: '14px', fontSize: '14px', color: 'var(--color-primary)' }}>📅 Leaves Policy Settings</h4>
+                  
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Monthly Paid Leaves</label>
+                      <input 
+                        type="number" 
+                        value={companySettings.monthlyPaidLeaves || 0} 
+                        onChange={(e) => setCompanySettings({ ...companySettings, monthlyPaidLeaves: parseInt(e.target.value) || 0 })} 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Yearly Paid Leaves Limit</label>
+                      <input 
+                        type="number" 
+                        value={companySettings.yearlyPaidLeaves || 0} 
+                        onChange={(e) => setCompanySettings({ ...companySettings, yearlyPaidLeaves: parseInt(e.target.value) || 0 })} 
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Anniversary Refresh Month</label>
+                      <select 
+                        value={companySettings.leavesRefreshMonth || 1} 
+                        onChange={(e) => setCompanySettings({ ...companySettings, leavesRefreshMonth: parseInt(e.target.value) })}
+                      >
+                        <option value={1}>January</option>
+                        <option value={2}>February</option>
+                        <option value={3}>March</option>
+                        <option value={4}>April</option>
+                        <option value={5}>May</option>
+                        <option value={6}>June</option>
+                        <option value={7}>July</option>
+                        <option value={8}>August</option>
+                        <option value={9}>September</option>
+                        <option value={10}>October</option>
+                        <option value={11}>November</option>
+                        <option value={12}>December</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Anniversary Refresh Day</label>
+                      <select 
+                        value={companySettings.leavesRefreshDay || 1} 
+                        onChange={(e) => setCompanySettings({ ...companySettings, leavesRefreshDay: parseInt(e.target.value) })}
+                      >
+                        {Array.from({ length: 31 }, (_, i) => (
+                          <option key={i + 1} value={i + 1}>Day {i + 1}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" className="btn-primary" style={{ marginTop: '20px' }}>Save Settings</button>
               </form>
             </div>
           )}
@@ -1573,7 +1692,16 @@ function App() {
             <div className="section-box">
               <div className="section-header">
                 <h3>Employee Directory</h3>
-                <button className="btn-action" onClick={openAddUserModal}>Add Employee</button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button className="btn-secondary-action" onClick={handleDownloadTemplate} style={{ border: '1px solid #c7d2fe', padding: '6px 12px', fontSize: '13px' }}>📥 Download Template</button>
+                  <button className="btn-secondary-action" onClick={() => {
+                    setBulkFile(null);
+                    setBulkError('');
+                    setBulkResult(null);
+                    setShowBulkModal(true);
+                  }} style={{ border: '1px solid #c7d2fe', padding: '6px 12px', fontSize: '13px' }}>📤 Bulk Upload</button>
+                  <button className="btn-action" onClick={openAddUserModal}>Add Employee</button>
+                </div>
               </div>
               <div className="table-wrapper">
                 <table className="custom-table">
@@ -1596,7 +1724,7 @@ function App() {
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <img 
-                              src={u.profilePicture ? `https://intime.hirelyft.in${u.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
+                              src={u.profilePicture ? `${SERVER_BASE}${u.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
                               alt="" 
                               style={{ width: '30px', height: '30px', borderRadius: '50%' }} 
                             />
@@ -1641,6 +1769,9 @@ function App() {
                       <th>Start Date</th>
                       <th>End Date</th>
                       <th>Reason</th>
+                      <th>Paid Days</th>
+                      <th>Borrowed</th>
+                      <th>Unpaid</th>
                       <th>Status</th>
                       <th>Action</th>
                     </tr>
@@ -1653,10 +1784,33 @@ function App() {
                         <td>{l.startDate}</td>
                         <td>{l.endDate}</td>
                         <td>{l.reason}</td>
+                        <td>{l.status === 'approved' ? (l.paidDays || 0) : '—'}</td>
+                        <td>{l.status === 'approved' ? (l.nextMonthPaidDays || 0) : '—'}</td>
+                        <td>{l.status === 'approved' ? (l.unpaidDays || 0) : '—'}</td>
                         <td><span className={`badge ${l.status}`}>{l.status}</span></td>
                         <td>
                           {l.status === 'pending' ? (
-                            <button className="btn-action" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => { setSelectedLeave(l); setShowLeaveModal(true); }}>Review</button>
+                            <button className="btn-action" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={async () => {
+                              setSelectedLeave(l);
+                              setShowLeaveModal(true);
+                              setSelectedLeaveQuota(null);
+                              try {
+                                const res = await fetch(`${API_BASE}/leaves/quota`, {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                  },
+                                  body: JSON.stringify({ userId: l.userId })
+                                });
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  setSelectedLeaveQuota(data.quota);
+                                }
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }}>Review</button>
                           ) : (
                             <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Processed</span>
                           )}
@@ -1684,7 +1838,7 @@ function App() {
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <img 
-                            src={emp.user.profilePicture ? `https://intime.hirelyft.in${emp.user.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
+                            src={emp.user.profilePicture ? `${SERVER_BASE}${emp.user.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
                             alt="" 
                             style={{ width: '32px', height: '32px', borderRadius: '50%' }} 
                           />
@@ -1886,7 +2040,7 @@ function App() {
               <div className="modal-body">
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Full Name</label>
+                    <label>Full Name *</label>
                     <input 
                       type="text" 
                       placeholder="John Doe" 
@@ -1896,7 +2050,7 @@ function App() {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Email Address</label>
+                    <label>Email Address *</label>
                     <input 
                       type="email" 
                       placeholder="john.doe@company.in" 
@@ -1909,7 +2063,7 @@ function App() {
 
                 {!editingUser && (
                   <div className="form-group">
-                    <label>Password</label>
+                    <label>Password *</label>
                     <input 
                       type="password" 
                       placeholder="Set initial password" 
@@ -1933,7 +2087,7 @@ function App() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Employee ID</label>
+                    <label>Employee ID *</label>
                     <input 
                       type="text" 
                       placeholder="EMP00123" 
@@ -1946,7 +2100,7 @@ function App() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Department</label>
+                    <label>Department *</label>
                     <select 
                       value={userForm.department} 
                       onChange={(e) => setUserForm({ ...userForm, department: e.target.value })}
@@ -1972,7 +2126,7 @@ function App() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Date of Birth</label>
+                    <label>Date of Birth *</label>
                     <input 
                       type="date" 
                       value={userForm.dob} 
@@ -2041,6 +2195,100 @@ function App() {
         </div>
       )}
 
+      {/* BULK UPLOAD MODAL */}
+      {showBulkModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Bulk Employee Upload</h3>
+              <button className="modal-close" onClick={() => setShowBulkModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleBulkUpload}>
+              <div className="modal-body">
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '20px' }}>
+                  Download the template spreadsheet, fill in details for your Employees, Managers, and Team Leaders, and upload the completed sheet below.
+                </p>
+                
+                <div className="form-group" style={{ marginBottom: '20px' }}>
+                  <label>Select Spreadsheet (.xlsx, .xls, .csv)</label>
+                  <input 
+                    type="file" 
+                    accept=".xlsx,.xls,.csv"
+                    onChange={(e) => setBulkFile(e.target.files[0])}
+                    style={{
+                      padding: '10px',
+                      border: '1px dashed #c7d2fe',
+                      borderRadius: '8px',
+                      background: '#f8fafc',
+                      width: '100%',
+                      cursor: 'pointer'
+                    }}
+                    required
+                  />
+                </div>
+
+                {bulkUploading && (
+                  <div style={{ textAlign: 'center', margin: '20px 0', color: 'var(--color-primary)' }}>
+                    <strong>Uploading and processing sheet... Please wait.</strong>
+                  </div>
+                )}
+
+                {bulkError && (
+                  <div style={{ color: 'var(--color-danger)', background: '#fef2f2', padding: '12px', borderRadius: '8px', marginBottom: '15px', fontSize: '13px' }}>
+                    {bulkError}
+                  </div>
+                )}
+
+                {bulkResult && (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '16px', borderRadius: '10px', marginBottom: '15px' }}>
+                    <h4 style={{ margin: '0 0 10px 0', color: '#166534', fontSize: '15px' }}>Bulk Registration Complete</h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                      <span>Successfully Registered:</span>
+                      <strong style={{ color: '#15803d' }}>{bulkResult.insertedCount}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                      <span>Failed Rows:</span>
+                      <strong style={{ color: bulkResult.failedCount > 0 ? '#b91c1c' : '#4b5563' }}>{bulkResult.failedCount}</strong>
+                    </div>
+
+                    {bulkResult.errors && bulkResult.errors.length > 0 && (
+                      <div style={{ marginTop: '12px' }}>
+                         <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#b91c1c' }}>Errors:</span>
+                         <div style={{
+                           maxHeight: '120px',
+                           overflowY: 'auto',
+                           background: '#fff',
+                           border: '1px solid #fca5a5',
+                           borderRadius: '6px',
+                           padding: '8px',
+                           marginTop: '5px',
+                           fontSize: '11px',
+                           color: '#b91c1c'
+                         }}>
+                           {bulkResult.errors.map((err, idx) => (
+                             <div key={idx} style={{ marginBottom: '4px' }}>• {err}</div>
+                           ))}
+                         </div>
+                       </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn-cancel" onClick={() => setShowBulkModal(false)}>Cancel</button>
+                {!bulkResult ? (
+                  <button type="submit" className="btn-primary" disabled={bulkUploading} style={{ width: 'auto' }}>
+                    {bulkUploading ? 'Uploading...' : 'Upload & Register'}
+                  </button>
+                ) : (
+                  <button type="button" className="btn-primary" onClick={() => setShowBulkModal(false)} style={{ width: 'auto' }}>Close</button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* LEAVE APPROVAL MODAL */}
       {showLeaveModal && selectedLeave && (
         <div className="modal-overlay">
@@ -2055,6 +2303,77 @@ function App() {
                 <p><strong>Duration:</strong> {selectedLeave.startDate} to {selectedLeave.endDate}</p>
                 <p style={{ marginTop: '8px' }}><strong>Reason:</strong> "{selectedLeave.reason}"</p>
               </div>
+
+              <div style={{ padding: '14px', backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', marginBottom: '20px', border: '1px solid var(--card-border)' }}>
+                <h4 style={{ fontSize: '13px', color: 'var(--color-primary)', marginBottom: '10px' }}>Paid Leave Allocation Details</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Requested as Paid:</span>
+                    <strong style={{ color: selectedLeave.isPaidRequest ? 'var(--color-success)' : 'inherit' }}>{selectedLeave.isPaidRequest ? 'Yes' : 'No'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Borrow Next Month:</span>
+                    <strong>{selectedLeave.allowNextMonthQuota ? 'Yes' : 'No'}</strong>
+                  </div>
+                  {selectedLeaveQuota && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Available (This Month):</span>
+                        <strong>{selectedLeaveQuota.availableThisMonth} Days</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Available (Next Month):</span>
+                        <strong>{selectedLeaveQuota.availableNextMonth} Days</strong>
+                      </div>
+                    </>
+                  )}
+                  {(() => {
+                    const start = new Date(selectedLeave.startDate);
+                    const end = new Date(selectedLeave.endDate);
+                    const totalDays = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                    let paid = 0, borrowed = 0, unpaid = totalDays;
+                    if (selectedLeave.isPaidRequest) {
+                      const availableThisMonth = selectedLeaveQuota ? selectedLeaveQuota.availableThisMonth : 0;
+                      const availableNextMonth = selectedLeaveQuota ? selectedLeaveQuota.availableNextMonth : 0;
+                      if (totalDays <= availableThisMonth) {
+                        paid = totalDays;
+                        borrowed = 0;
+                        unpaid = 0;
+                      } else {
+                        paid = availableThisMonth;
+                        const rem = totalDays - availableThisMonth;
+                        if (selectedLeave.allowNextMonthQuota) {
+                          borrowed = Math.min(rem, availableNextMonth);
+                          unpaid = rem - borrowed;
+                        } else {
+                          borrowed = 0;
+                          unpaid = rem;
+                        }
+                      }
+                    }
+                    return (
+                      <div style={{ marginTop: '10px', borderTop: '1px solid var(--card-border)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontWeight: 'bold' }}>Expected Allocation:</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Paid Days:</span>
+                          <strong style={{ color: 'var(--color-success)' }}>{paid} Days</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Borrowed Days:</span>
+                          <strong style={{ color: 'var(--color-primary)' }}>{borrowed} Days</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Unpaid Days:</span>
+                          <strong style={{ color: 'var(--color-danger)' }}>{unpaid} Days</strong>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
               <div className="form-group">
                 <label>Admin/Approver Remarks</label>
                 <textarea 
@@ -2250,13 +2569,13 @@ const AttendanceTable = ({ records }) => {
                 <td>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     {rec.selfieUrl ? (
-                      <a href={`https://intime.hirelyft.in${rec.selfieUrl}`} target="_blank" rel="noopener noreferrer">
-                        <img src={`https://intime.hirelyft.in${rec.selfieUrl}`} alt="In" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--card-border)' }} />
+                      <a href={`${SERVER_BASE}${rec.selfieUrl}`} target="_blank" rel="noopener noreferrer">
+                        <img src={`${SERVER_BASE}${rec.selfieUrl}`} alt="In" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--card-border)' }} />
                       </a>
                     ) : '—'}
                     {rec.checkoutSelfieUrl ? (
-                      <a href={`https://intime.hirelyft.in${rec.checkoutSelfieUrl}`} target="_blank" rel="noopener noreferrer">
-                        <img src={`https://intime.hirelyft.in${rec.checkoutSelfieUrl}`} alt="Out" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--card-border)' }} />
+                      <a href={`${SERVER_BASE}${rec.checkoutSelfieUrl}`} target="_blank" rel="noopener noreferrer">
+                        <img src={`${SERVER_BASE}${rec.checkoutSelfieUrl}`} alt="Out" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--card-border)' }} />
                       </a>
                     ) : null}
                   </div>
