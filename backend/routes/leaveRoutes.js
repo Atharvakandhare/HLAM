@@ -5,6 +5,7 @@ const {
   getAllLeaves,
   updateLeaveStatus,
   updateLeave,
+  getLeaveQuota,
 } = require('../controllers/leaveController');
 const { authMiddleware, approverOnly } = require('../middleware/auth');
 
@@ -17,6 +18,7 @@ router.use(authMiddleware);
 router.post('/apply', applyLeave);
 router.get('/my', getMyLeaves);
 router.post('/update/:id', updateLeave);
+router.post('/quota', getLeaveQuota);
 
 // Approver routes
 router.get('/admin', approverOnly, getAllLeaves);

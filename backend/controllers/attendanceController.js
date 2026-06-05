@@ -82,6 +82,16 @@ const checkIn = async (req, res) => {
       return res.status(400).json({ message: 'Live selfie is required for check-in.' });
     }
 
+    // Mood is mandatory
+    if (!mood) {
+      return res.status(400).json({ message: 'Mood selection is required for check-in.' });
+    }
+
+    // Energy level is mandatory
+    if (!energyLevel) {
+      return res.status(400).json({ message: 'Energy level selection is required for check-in.' });
+    }
+
     const today = new Date();
     const dateOnly = getLocalDateString(today);
 

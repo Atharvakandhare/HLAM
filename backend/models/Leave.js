@@ -37,6 +37,36 @@ const Leave = sequelize.define(
       allowNull: true,
       field: 'admin_comment',
     },
+    isPaidRequest: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'is_paid_request',
+    },
+    allowNextMonthQuota: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'allow_next_month_quota',
+    },
+    paidDays: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'paid_days',
+    },
+    nextMonthPaidDays: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'next_month_paid_days',
+    },
+    unpaidDays: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'unpaid_days',
+    },
   },
   {
     tableName: 'leaves',

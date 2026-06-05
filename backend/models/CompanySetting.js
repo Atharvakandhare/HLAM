@@ -46,6 +46,30 @@ const CompanySetting = sequelize.define(
       allowNull: false,
       defaultValue: 100.0,
     },
+    monthlyPaidLeaves: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'monthly_paid_leaves',
+    },
+    yearlyPaidLeaves: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'yearly_paid_leaves',
+    },
+    leavesRefreshMonth: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+      field: 'leaves_refresh_month',
+    },
+    leavesRefreshDay: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+      field: 'leaves_refresh_day',
+    },
   },
   {
     tableName: 'company_settings',

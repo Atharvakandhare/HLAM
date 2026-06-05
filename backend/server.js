@@ -39,9 +39,9 @@ const seedAdmin = async () => {
             defaults: {
                 checkInTime: '09:00:00',
                 checkOutTime: '18:00:00',
-                latitude: 28.6139,
-                longitude: 77.2090,
-                address: 'New Delhi, India',
+                latitude: 0.0,
+                longitude: 0.0,
+                address: null,
                 radius: 100.0
             }
         });

@@ -2,10 +2,20 @@ const { Leave, User, Company, Team } = require('../associations');
 const { Op } = require('sequelize');
 const { sendLeaveStatusEmail } = require('../services/mailService');
 
+const getDaysDiff = (startStr, endStr) => {
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+  const utc1 = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const utc2 = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+  return Math.floor((utc2 - utc1) / (1000 * 60 * 60 * 24)) + 1;
+};
+
+const { calculateUserLeavesQuota } = require('../services/leaveQuotaService');
+
 // Apply for a leave
 const applyLeave = async (req, res) => {
   try {
-    const { startDate, endDate, reason } = req.body;
+    const { startDate, endDate, reason, isPaidRequest, allowNextMonthQuota } = req.body;
     const userId = req.user.id;
 
     if (!startDate || !endDate || !reason) {
@@ -18,6 +28,8 @@ const applyLeave = async (req, res) => {
       endDate,
       reason,
       status: 'pending',
+      isPaidRequest: isPaidRequest === true || isPaidRequest === 'true',
+      allowNextMonthQuota: allowNextMonthQuota === true || allowNextMonthQuota === 'true',
     });
 
     return res.status(201).json({ message: 'Leave application submitted successfully', leave });
@@ -168,6 +180,42 @@ const updateLeaveStatus = async (req, res) => {
       leave.adminComment = adminComment;
     }
 
+    if (status === 'approved') {
+      const daysDiff = getDaysDiff(leave.startDate, leave.endDate);
+
+      if (leave.isPaidRequest) {
+        // Calculate quota for applicant as of leave's startDate
+        const quota = await calculateUserLeavesQuota(leave.userId, leave.startDate);
+
+        // availableThisMonth represents the remaining paid leaves balance of the start month
+        // before this leave (since this leave is currently pending, it was NOT counted in calculateUserLeavesQuota)
+        const available = quota.availableThisMonth;
+        const availableNextMonth = quota.availableNextMonth;
+
+        if (daysDiff <= available) {
+          leave.paidDays = daysDiff;
+          leave.nextMonthPaidDays = 0;
+          leave.unpaidDays = 0;
+        } else {
+          leave.paidDays = available;
+          const remaining = daysDiff - available;
+
+          if (leave.allowNextMonthQuota) {
+            const nextMonthPaid = Math.min(remaining, availableNextMonth);
+            leave.nextMonthPaidDays = nextMonthPaid;
+            leave.unpaidDays = remaining - nextMonthPaid;
+          } else {
+            leave.nextMonthPaidDays = 0;
+            leave.unpaidDays = remaining;
+          }
+        }
+      } else {
+        leave.paidDays = 0;
+        leave.nextMonthPaidDays = 0;
+        leave.unpaidDays = daysDiff;
+      }
+    }
+
     await leave.save();
 
     // Send leave status update email in the background
@@ -195,7 +243,7 @@ const updateLeaveStatus = async (req, res) => {
 const updateLeave = async (req, res) => {
   try {
     const { id } = req.params;
-    const { startDate, endDate, reason } = req.body;
+    const { startDate, endDate, reason, isPaidRequest, allowNextMonthQuota } = req.body;
     const userId = req.user.id;
 
     if (!startDate || !endDate || !reason) {
@@ -220,6 +268,8 @@ const updateLeave = async (req, res) => {
     leave.startDate = startDate;
     leave.endDate = endDate;
     leave.reason = reason;
+    if (isPaidRequest !== undefined) leave.isPaidRequest = isPaidRequest === true || isPaidRequest === 'true';
+    if (allowNextMonthQuota !== undefined) leave.allowNextMonthQuota = allowNextMonthQuota === true || allowNextMonthQuota === 'true';
 
     await leave.save();
     return res.json({ message: 'Leave application updated successfully', leave });
@@ -229,4 +279,51 @@ const updateLeave = async (req, res) => {
   }
 };
 
-module.exports = { applyLeave, getMyLeaves, getAllLeaves, updateLeaveStatus, updateLeave };
+// Fetch leave quota
+const getLeaveQuota = async (req, res) => {
+  try {
+    const loggedInUser = req.user;
+    let targetUserId = req.body.userId || loggedInUser.id;
+
+    if (targetUserId !== loggedInUser.id) {
+      // Check permissions
+      const targetUser = await User.findByPk(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (targetUser.companyId !== loggedInUser.companyId) {
+        return res.status(403).json({ message: 'Forbidden. User belongs to another company.' });
+      }
+
+      if (['manager', 'team_leader'].includes(loggedInUser.role)) {
+        const managedTeams = await Team.findAll({
+          where: {
+            [Op.or]: [
+              { managerId: loggedInUser.id },
+              { teamLeaderId: loggedInUser.id }
+            ]
+          },
+          attributes: ['id']
+        });
+        const managedTeamIds = managedTeams.map(t => t.id);
+        const isTeamMember = targetUser.teamId && managedTeamIds.includes(targetUser.teamId);
+
+        if (!isTeamMember) {
+          return res.status(403).json({ message: 'Forbidden. You do not manage this user\'s team.' });
+        }
+      } else if (loggedInUser.role === 'employee') {
+        return res.status(403).json({ message: 'Forbidden. Employees cannot view other users\' quotas.' });
+      }
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const quota = await calculateUserLeavesQuota(targetUserId, todayStr);
+    return res.json({ quota });
+  } catch (error) {
+    console.error('[Leave] Fetch quota error:', error);
+    return res.status(500).json({ message: 'Failed to fetch leave quota', error: error.message });
+  }
+};
+
+module.exports = { applyLeave, getMyLeaves, getAllLeaves, updateLeaveStatus, updateLeave, getLeaveQuota };
