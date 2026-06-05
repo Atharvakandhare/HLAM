@@ -10,19 +10,30 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <!-- Gallery access: READ_MEDIA_IMAGES for Android 13+ (API 33+) -->
+
+    <!-- Storage: read/write for template download temp file on Android ≤ 32 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Gallery access (images) for Android 13+ -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <!-- Gallery access: READ_MEDIA_VISUAL_USER_SELECTED for Android 14+ (API 34+) -->
+    <!-- Gallery access for Android 14+ -->
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
-    <!-- Gallery access: READ_EXTERNAL_STORAGE for Android 12 and below (API ≤ 32) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
+    <!-- FILE PICKER: required on Android 13+ (API 33+) to access documents/xlsx/csv
+         via Storage Access Framework without READ_EXTERNAL_STORAGE -->
+    <uses-permission android:name="android.permission.READ_MEDIA_DOCUMENTS"
+        android:minSdkVersion="33" />
+
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
+
     <application
         android:label="HL Attendee"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
-        
 
         <!-- Persistent background location service registration -->
         <service
@@ -58,15 +69,30 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <!-- Package visibility queries for Android 11+ (API 30+).
+         Required so the system file picker (ACTION_GET_CONTENT / ACTION_OPEN_DOCUMENT)
+         can be discovered and launched by file_picker plugin. Without these entries
+         the picker throws an ActivityNotFoundException on Android 11+. -->
     <queries>
+        <!-- Text processing (Flutter engine) -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- File picker: open document (spreadsheets / any file) -->
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT"/>
+            <data android:mimeType="*/*"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT"/>
+            <data android:mimeType="*/*"/>
+        </intent>
+        <!-- Share / send file (for template sharing via SharePlus) -->
+        <intent>
+            <action android:name="android.intent.action.SEND"/>
+            <data android:mimeType="*/*"/>
         </intent>
     </queries>
 </manifest>
