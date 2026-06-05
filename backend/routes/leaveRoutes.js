@@ -16,10 +16,10 @@ router.use(authMiddleware);
 // Employee routes
 router.post('/apply', applyLeave);
 router.get('/my', getMyLeaves);
-router.put('/update/:id', updateLeave);
+router.post('/update/:id', updateLeave);
 
 // Approver routes
 router.get('/admin', approverOnly, getAllLeaves);
-router.put('/admin/:id', approverOnly, updateLeaveStatus);
+router.post('/admin/:id', approverOnly, updateLeaveStatus);
 
 module.exports = router;

@@ -85,7 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         
         // Update local session
         final updatedUser = await apiService.getProfile();
-        final userModel = User.fromJson(updatedUser['user']);
+        final userModel = User.fromJson(updatedUser['user'] ?? updatedUser);
 
         setState(() {
           _user = userModel;
@@ -126,7 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       // Fetch latest profile
       final updatedUser = await apiService.getProfile();
-      final userModel = User.fromJson(updatedUser['user']);
+      final userModel = User.fromJson(updatedUser['user'] ?? updatedUser);
 
       setState(() {
         _user = userModel;

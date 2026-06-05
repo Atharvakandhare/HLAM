@@ -19,8 +19,8 @@ router.post('/logout', authMiddleware, logout);
 router.post('/refresh-token', refreshToken);
 router.get('/me', authMiddleware, me);
 router.post('/change-password', authMiddleware, changePassword);
-router.put('/profile-picture', authMiddleware, updateProfilePicture);
-router.delete('/profile-picture', authMiddleware, deleteProfilePicture);
+router.post('/profile-picture', authMiddleware, updateProfilePicture);
+router.post('/profile-picture/delete', authMiddleware, deleteProfilePicture);
 
 module.exports = router;
 

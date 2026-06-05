@@ -21,12 +21,12 @@ router.get('/', authMiddleware, listHolidays);
 router.post('/parse-sheet', authMiddleware, companyAdminOnly, ...parseHolidaySheet);
 router.post('/bulk', authMiddleware, companyAdminOnly, bulkCreateHolidays);
 router.post('/', authMiddleware, companyAdminOnly, createHoliday);
-router.put('/:id', authMiddleware, companyAdminOnly, updateHoliday);
-router.delete('/:id', authMiddleware, companyAdminOnly, deleteHoliday);
+router.post('/:id', authMiddleware, companyAdminOnly, updateHoliday);
+router.post('/:id/delete', authMiddleware, companyAdminOnly, deleteHoliday);
 
 // Exceptions
 router.get('/:id/exceptions', authMiddleware, companyAdminOnly, listExceptions);
 router.post('/:id/exceptions', authMiddleware, companyAdminOnly, addException);
-router.delete('/:id/exceptions/:eid', authMiddleware, companyAdminOnly, removeException);
+router.post('/:id/exceptions/:eid/delete', authMiddleware, companyAdminOnly, removeException);
 
 module.exports = router;

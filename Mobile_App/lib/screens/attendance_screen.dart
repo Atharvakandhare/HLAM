@@ -475,9 +475,19 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 
   Future<void> _promptSelectEmployeeForCalendar() async {
     final p = context.read<AppProvider>();
-    final employees = p.employees;
+    final isManagerOrTL = widget.currentUser.role == 'manager' || widget.currentUser.role == 'team_leader';
+    final List<User> filteredEmployees;
+    if (isManagerOrTL) {
+      final managedTeamIds = p.teams
+          .where((t) => t['managerId'] == widget.currentUser.id || t['teamLeaderId'] == widget.currentUser.id)
+          .map((t) => t['id'] as int)
+          .toSet();
+      filteredEmployees = p.employees.where((e) => e.id == widget.currentUser.id || (e.teamId != null && managedTeamIds.contains(e.teamId))).toList();
+    } else {
+      filteredEmployees = p.employees;
+    }
 
-    if (employees.isEmpty) {
+    if (filteredEmployees.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No employees found to view calendar.')),
       );
@@ -512,6 +522,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<User>(
+                      isExpanded: true,
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: const Color(0xFFF8FAFC),
@@ -519,9 +530,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
                       hint: const Text('Select an employee', style: TextStyle(fontSize: 13)),
-                      items: employees.map((e) => DropdownMenuItem<User>(
+                      items: filteredEmployees.map((e) => DropdownMenuItem<User>(
                         value: e,
-                        child: Text(e.name, style: const TextStyle(fontSize: 13)),
+                        child: Text(e.name, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
                       )).toList(),
                       onChanged: (val) {
                         setStateDialog(() {
@@ -731,7 +742,17 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   }
 
   Widget _buildFilterPanel(AppProvider p) {
-    final employees = p.employees;
+    final isManagerOrTL = widget.currentUser.role == 'manager' || widget.currentUser.role == 'team_leader';
+    final List<User> filteredEmployees;
+    if (isManagerOrTL) {
+      final managedTeamIds = p.teams
+          .where((t) => t['managerId'] == widget.currentUser.id || t['teamLeaderId'] == widget.currentUser.id)
+          .map((t) => t['id'] as int)
+          .toSet();
+      filteredEmployees = p.employees.where((e) => e.id == widget.currentUser.id || (e.teamId != null && managedTeamIds.contains(e.teamId))).toList();
+    } else {
+      filteredEmployees = p.employees;
+    }
     final moods = ['All', 'Happy', 'Sad', 'Exhausted', 'Angry'];
     final moodEmojis = {'Happy': '😊', 'Sad': '😢', 'Exhausted': '😩', 'Angry': '😤'};
     final energies = ['All', 'Low', 'Medium', 'High'];
@@ -760,6 +781,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
           ],
           const SizedBox(height: 14),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _selectedUserId,
             decoration: InputDecoration(
               filled: true,
@@ -776,7 +798,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             ),
             items: [
               const DropdownMenuItem<String>(value: null, child: Text('All Employees', style: TextStyle(fontSize: 13))),
-              ...employees.map((e) => DropdownMenuItem<String>(
+              ...filteredEmployees.map((e) => DropdownMenuItem<String>(
                 value: e.id.toString(),
                 child: Text('${e.name} (${e.employeeId ?? e.email})', style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
               )),
@@ -1535,35 +1557,7 @@ class _EmployeeListViewState extends State<EmployeeListView> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // Employee Gradient Header (for non-regular managers to look unified!)
-              if (widget.currentUser.role != 'employee')
-                SliverToBoxAdapter(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF2563EB), Color(0xFF4F46E5)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-                    ),
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'My Work Logs',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: -0.5),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'View and audit your personal checking records.',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+
               
               SliverToBoxAdapter(child: _buildSearchRow(activeFilterCount)),
               if (_filterOpen)

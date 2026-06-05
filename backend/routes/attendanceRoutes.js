@@ -26,6 +26,6 @@ router.get('/stats', authMiddleware, getUserStats);
 router.get('/by-teams', authMiddleware, adminOnly, getAttendanceByTeams);
 router.get('/', authMiddleware, adminOnly, listAll);
 router.get('/:id', authMiddleware, adminOnly, getById);
-router.delete('/:id', authMiddleware, adminOnly, deleteAttendance);
+router.post('/:id/delete', authMiddleware, adminOnly, deleteAttendance);
 
 module.exports = router;
