@@ -92,7 +92,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   });
                 }
               } catch (e) {
-                setSheetState(() => errorMessage = 'Could not open file picker.');
+                setSheetState(() => errorMessage = 'Could not open file picker: $e');
               }
             }
 

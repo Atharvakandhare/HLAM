@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../providers/app_provider.dart';
 import '../services/auth_service.dart';
 import '../models/user.dart';
@@ -40,19 +39,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    // Request Photos/Storage permissions explicitly as requested by user
-    PermissionStatus status = await Permission.photos.request();
-    if (!status.isGranted && !status.isLimited) {
-      status = await Permission.storage.request();
-      if (!status.isGranted && !status.isLimited) {
-        if (mounted) {
-          AppMessages.showError(
-            context,
-            'Gallery & Storage permission is required to select and upload a profile picture. Please enable permission in App Settings.',
-          );
-        }
-        return;
+    if (_user?.isProfilePictureAdminSet == true) {
+      if (mounted) {
+        AppMessages.showError(context, 'Your profile picture has been locked by the administrator.');
       }
+      return;
     }
 
     final ImagePicker picker = ImagePicker();
@@ -65,13 +56,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
       
       if (image == null) return;
-
-      if (_user?.isProfilePictureAdminSet == true) {
-        if (mounted) {
-          AppMessages.showError(context, 'Your profile picture has been locked by the administrator.');
-        }
-        return;
-      }
 
       setState(() => _isUploadingPicture = true);
       
@@ -98,10 +82,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         String errMsg = e.toString();
-        if (errMsg.contains('EACCES') || errMsg.contains('permission') || errMsg.contains('Permission')) {
-          errMsg = 'Server directory write permission denied (EACCES). Please ask your server administrator to grant write permissions (chmod 775) to the backend uploads/ folder.';
+        if (errMsg.contains('photo_access_denied') || errMsg.contains('permission') || errMsg.contains('Permission')) {
+          AppMessages.showError(
+            context,
+            'Gallery permission is required to choose a profile picture. Please enable it in Settings.',
+          );
+        } else {
+          if (errMsg.contains('EACCES')) {
+            errMsg = 'Server directory write permission denied (EACCES). Please ask your server administrator to grant write permissions (chmod 775) to the backend uploads/ folder.';
+          }
+          AppMessages.showError(context, 'Failed to upload profile picture: $errMsg');
         }
-        AppMessages.showError(context, 'Failed to upload profile picture: $errMsg');
       }
     } finally {
       if (mounted) {
@@ -435,8 +426,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Max size: 2 MB (JPG/PNG)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   if (emp.profilePicture != null && emp.profilePicture!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     TextButton(
                       onPressed: _deleteImage,
                       style: TextButton.styleFrom(

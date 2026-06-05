@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../providers/app_provider.dart';
@@ -62,16 +63,26 @@ class _CompanyHolidaysScreenState extends State<CompanyHolidaysScreen> {
   }
 
   Future<void> _uploadSheet() async {
-    final picker = ImagePicker();
-    // Use file picker approach
     try {
-      final file = await picker.pickMedia();
-      if (file == null) return;
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls', 'csv'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final pickedFile = result.files.first;
+      if (pickedFile.path == null) {
+        if (mounted) {
+          AppMessages.showError(context, 'Could not retrieve file path.');
+        }
+        return;
+      }
       if (!mounted) return;
 
       setState(() => _isLoading = true);
       final provider = Provider.of<AppProvider>(context, listen: false);
       try {
+        final file = XFile(pickedFile.path!);
         final parsed = await provider.parseHolidaySheet(file);
         if (mounted) {
           setState(() {

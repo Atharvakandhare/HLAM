@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -274,20 +273,6 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
   }
 
   Future<void> _pickImage() async {
-    PermissionStatus status = await Permission.photos.request();
-    if (!status.isGranted && !status.isLimited) {
-      status = await Permission.storage.request();
-      if (!status.isGranted && !status.isLimited) {
-        if (mounted) {
-          AppMessages.showError(
-            context,
-            'Gallery permission is required to choose a profile picture. Please enable in App Settings.',
-          );
-        }
-        return;
-      }
-    }
-
     final ImagePicker picker = ImagePicker();
     try {
       final XFile? image = await picker.pickImage(
@@ -302,7 +287,15 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
       });
     } catch (e) {
       if (mounted) {
-        AppMessages.showError(context, 'Failed to pick image: $e');
+        String errMsg = e.toString();
+        if (errMsg.contains('photo_access_denied') || errMsg.contains('permission') || errMsg.contains('Permission')) {
+          AppMessages.showError(
+            context,
+            'Gallery permission is required to choose a profile picture. Please enable in App Settings.',
+          );
+        } else {
+          AppMessages.showError(context, 'Failed to pick image: $e');
+        }
       }
     }
   }
@@ -496,7 +489,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                   });
                 }
               } catch (e) {
-                setSheetState(() => errorMessage = 'Could not open file picker.');
+                setSheetState(() => errorMessage = 'Could not open file picker: $e');
               }
             }
 
