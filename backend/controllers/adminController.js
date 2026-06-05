@@ -735,8 +735,8 @@ const createCompany = async (req, res) => {
       companyId: company.id,
       checkInTime: '09:00:00',
       checkOutTime: '18:00:00',
-      latitude: 28.6139,
-      longitude: 77.2090,
+      latitude: 0.0,
+      longitude: 0.0,
       address: null,
       radius: 100.0
     });
@@ -954,10 +954,9 @@ const getCompanySettings = async (req, res) => {
     const creatorRole = req.user.role;
     const { companyId } = req.query;
 
-    // Both system_admin and company_admin are restricted to their own company settings
     let targetCompanyId = req.user.companyId;
-    if (creatorRole === 'company_admin') {
-      targetCompanyId = req.user.companyId;
+    if (creatorRole === 'system_admin' && companyId) {
+      targetCompanyId = parseInt(companyId);
     }
 
     if (!targetCompanyId) {
@@ -982,10 +981,24 @@ const updateCompanySettings = async (req, res) => {
       return res.status(403).json({ message: 'Only Admins can update company settings.' });
     }
 
-    const { companyId, checkInTime, checkOutTime, latitude, longitude, address, radius } = req.body;
+    const {
+      companyId,
+      checkInTime,
+      checkOutTime,
+      latitude,
+      longitude,
+      address,
+      radius,
+      monthlyPaidLeaves,
+      yearlyPaidLeaves,
+      leavesRefreshMonth,
+      leavesRefreshDay
+    } = req.body;
 
-    // Both system_admin and company_admin are restricted to their own company settings
     let targetCompanyId = req.user.companyId;
+    if (creatorRole === 'system_admin' && companyId) {
+      targetCompanyId = parseInt(companyId);
+    }
 
     if (!targetCompanyId) {
       return res.status(400).json({ message: 'Company ID is required.' });
@@ -1001,6 +1014,10 @@ const updateCompanySettings = async (req, res) => {
     if (longitude !== undefined) setting.longitude = parseFloat(longitude);
     if (address !== undefined) setting.address = address;
     if (radius !== undefined) setting.radius = parseFloat(radius);
+    if (monthlyPaidLeaves !== undefined) setting.monthlyPaidLeaves = parseInt(monthlyPaidLeaves);
+    if (yearlyPaidLeaves !== undefined) setting.yearlyPaidLeaves = parseInt(yearlyPaidLeaves);
+    if (leavesRefreshMonth !== undefined) setting.leavesRefreshMonth = parseInt(leavesRefreshMonth);
+    if (leavesRefreshDay !== undefined) setting.leavesRefreshDay = parseInt(leavesRefreshDay);
 
     await setting.save();
 
@@ -1094,6 +1111,229 @@ const addTeamMember = async (req, res) => {
   }
 };
 
+const downloadUserTemplate = async (req, res) => {
+  try {
+    const path = require('path');
+    const templatePath = path.join(__dirname, '..', 'employees_template.xlsx');
+    return res.download(templatePath, 'employees_template.xlsx');
+  } catch (error) {
+    console.error('[Template Download] Error:', error);
+    return res.status(500).json({ message: 'Failed to download template', error: error.message });
+  }
+};
+
+const bulkUploadUsers = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded.' });
+    }
+
+    const creatorRole = req.user.role;
+    const creatorCompanyId = req.user.companyId;
+
+    if (!['system_admin', 'company_admin'].includes(creatorRole)) {
+      return res.status(403).json({ message: 'Only administrators can perform bulk uploads.' });
+    }
+
+    const XLSX = require('xlsx');
+    const bcrypt = require('bcryptjs');
+
+    // Load workbook
+    const workbook = XLSX.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    // Convert rows to array of objects
+    const rawRows = XLSX.utils.sheet_to_json(sheet);
+    if (rawRows.length === 0) {
+      return res.status(400).json({ message: 'The uploaded file is empty.' });
+    }
+
+    const createdUsers = [];
+    const errors = [];
+
+    // Valid option sets
+    const VALID_ROLES = ['manager', 'team_leader', 'employee'];
+    const VALID_WORK_MODES = ['Work From Office', 'Work From Home', 'Remote Work'];
+    const VALID_WORK_TYPES = ['Field Work', 'Work From Office', 'Office + Field Work'];
+
+    for (let index = 0; index < rawRows.length; index++) {
+      const row = rawRows[index];
+      const rowNum = index + 2; // Row number in sheet (1-based + 1 for header)
+
+      // Normalize headers using case-insensitive mapping
+      const getVal = (keys) => {
+        for (const k of keys) {
+          const matchingKey = Object.keys(row).find(rk => rk.trim().toLowerCase().includes(k.toLowerCase()));
+          if (matchingKey && row[matchingKey] !== undefined) {
+            return String(row[matchingKey]).trim();
+          }
+        }
+        return '';
+      };
+
+      const name = getVal(['name']);
+      const email = getVal(['email']);
+      const password = getVal(['password']);
+      const employeeId = getVal(['employee id', 'employeeid', 'empid', 'id']);
+      const department = getVal(['department', 'dept']);
+      const roleStr = getVal(['role']) || 'employee';
+      const workModeStr = getVal(['work mode', 'workmode']) || 'Work From Office';
+      const workTypeStr = getVal(['work type', 'worktype']);
+      const dobStr = getVal(['date of birth', 'dob', 'birth']);
+      const state = getVal(['state']);
+      const city = getVal(['city']);
+
+      // 1. Mandatory Validations
+      if (!name) {
+        errors.push(`Row ${rowNum}: Name is required.`);
+        continue;
+      }
+      if (!email) {
+        errors.push(`Row ${rowNum}: Email is required.`);
+        continue;
+      }
+      // Simple regex check
+      if (!/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
+        errors.push(`Row ${rowNum}: Invalid email format ("${email}").`);
+        continue;
+      }
+      if (!password) {
+        errors.push(`Row ${rowNum}: Password is required.`);
+        continue;
+      }
+      if (password.length < 6) {
+        errors.push(`Row ${rowNum}: Password must be at least 6 characters.`);
+        continue;
+      }
+      if (!employeeId) {
+        errors.push(`Row ${rowNum}: Employee ID is required.`);
+        continue;
+      }
+      if (!department) {
+        errors.push(`Row ${rowNum}: Department is required.`);
+        continue;
+      }
+
+      // Check unique email in DB
+      const existingEmail = await User.findOne({ where: { email } });
+      if (existingEmail) {
+        errors.push(`Row ${rowNum}: Email "${email}" is already registered.`);
+        continue;
+      }
+
+      // Check unique employeeId in DB
+      const existingEmpId = await User.findOne({ where: { employeeId } });
+      if (existingEmpId) {
+        errors.push(`Row ${rowNum}: Employee ID "${employeeId}" already exists.`);
+        continue;
+      }
+
+      // Role check
+      const normalizedRole = roleStr.toLowerCase().replace(' ', '_');
+      if (!VALID_ROLES.includes(normalizedRole)) {
+        errors.push(`Row ${rowNum}: Invalid role "${roleStr}". Allowed values: Manager, Team Leader, Employee.`);
+        continue;
+      }
+
+      // Work mode check
+      const matchedWorkMode = VALID_WORK_MODES.find(wm => wm.toLowerCase() === workModeStr.toLowerCase()) || 'Work From Office';
+
+      // Marketing work type check
+      let finalWorkType = null;
+      if (department.toLowerCase() === 'marketing') {
+        if (!workTypeStr) {
+          errors.push(`Row ${rowNum}: Work Type is required for Marketing department.`);
+          continue;
+        }
+        // Normalize common spelling variants
+        let checkType = workTypeStr.toLowerCase().replace(/[\s\+]/g, '');
+        if (checkType === 'fieldwork') finalWorkType = 'Field Work';
+        else if (checkType === 'officework' || checkType === 'workfromoffice') finalWorkType = 'Work From Office';
+        else if (checkType === 'officefieldwork' || checkType === 'officefield') finalWorkType = 'Office + Field Work';
+
+        if (!finalWorkType) {
+          errors.push(`Row ${rowNum}: Invalid work type "${workTypeStr}" for Marketing. Allowed values: Field Work, Work From Office, Office + Field Work.`);
+          continue;
+        }
+      }
+
+      // DOB format check
+      let finalDob = null;
+      if (dobStr) {
+        const testDob = new Date(dobStr);
+        if (isNaN(testDob.getTime())) {
+          errors.push(`Row ${rowNum}: Invalid DOB format ("${dobStr}"). Use YYYY-MM-DD.`);
+          continue;
+        }
+        finalDob = dobStr;
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user (forced to admin's companyId)
+      const newUser = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        role: normalizedRole,
+        department,
+        employeeId,
+        workMode: matchedWorkMode,
+        workType: finalWorkType,
+        dob: finalDob,
+        state: state || null,
+        city: city || null,
+        companyId: creatorCompanyId,
+        isActive: true
+      });
+
+      // Send welcome email in background
+      let companyName = '';
+      try {
+        if (creatorCompanyId) {
+          const companyObj = await Company.findByPk(creatorCompanyId);
+          if (companyObj) companyName = companyObj.name || '';
+        }
+      } catch (err) {}
+
+      const { sendWelcomeEmail } = require('../services/mailService');
+      sendWelcomeEmail({
+        name,
+        email,
+        password,
+        employeeId,
+        companyName,
+        role: normalizedRole,
+        workMode: matchedWorkMode,
+        workType: finalWorkType,
+        department
+      }).catch(err => console.error('[Bulk Welcome Email] Error:', err.message));
+
+      createdUsers.push(newUser);
+    }
+
+    // Clean up temp file
+    const fs = require('fs');
+    fs.unlink(req.file.path, () => {});
+
+    return res.json({
+      success: true,
+      insertedCount: createdUsers.length,
+      failedCount: errors.length,
+      errors
+    });
+  } catch (error) {
+    console.error('[Bulk Upload] Error:', error);
+    if (req.file && req.file.path) {
+      const fs = require('fs');
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
+    return res.status(500).json({ message: 'Bulk upload failed', error: error.message });
+  }
+};
+
 module.exports = {
   listUsers,
   createUser,
@@ -1110,4 +1350,6 @@ module.exports = {
   getCompanySettings,
   updateCompanySettings,
   addTeamMember,
+  downloadUserTemplate,
+  bulkUploadUsers,
 };
