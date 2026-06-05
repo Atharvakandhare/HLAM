@@ -18,6 +18,7 @@
 
 # Keep In-App Update/Play Core native classes
 -keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
 
 # Keep Flutter Secure Storage native classes
 -keep class com.it_solutions.flutter_secure_storage.** { *; }

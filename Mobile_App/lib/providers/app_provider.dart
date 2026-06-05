@@ -588,6 +588,7 @@ class AppProvider extends ChangeNotifier {
 
       // Reverse geocoding is best-effort — failure must NOT block check-in
       try {
+        await setLocaleIdentifier("en_US");
         List<Placemark> placemarks = await placemarkFromCoordinates(
           position.latitude,
           position.longitude,

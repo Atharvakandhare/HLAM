@@ -96,6 +96,7 @@ class LocationTrackingService {
       // 3. Reverse Geocode Coordinates to Address
       String address = "Unknown Location";
       try {
+        await setLocaleIdentifier("en_US");
         List<Placemark> placemarks = await placemarkFromCoordinates(
           position.latitude,
           position.longitude,

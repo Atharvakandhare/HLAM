@@ -173,6 +173,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
 
       // Reverse geocode to find address
       try {
+        await setLocaleIdentifier("en_US");
         final placemarks = await placemarkFromCoordinates(
           position.latitude,
           position.longitude,

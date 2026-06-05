@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-const API_BASE = 'https://jerome-waspier-zainab.ngrok-free.dev/api';
+const API_BASE = 'https://intime.hirelyft.in/api';
 
 const INDIAN_STATES_CITIES = {
   "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Thane", "Nashik"],
@@ -980,7 +980,7 @@ function App() {
         {user && (
           <div className="sidebar-user">
             <img 
-              src={user.profilePicture ? `http://localhost:8000${user.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
+              src={user.profilePicture ? `https://intime.hirelyft.in${user.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
               alt="Avatar" 
               className="user-avatar" 
             />
@@ -1374,7 +1374,7 @@ function App() {
                             c.admins.map(admin => (
                               <div key={admin.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                                 <img
-                                  src={admin.profilePicture ? `http://localhost:8000${admin.profilePicture}` : "https://avatar.iran.liara.run/public/boy"}
+                                  src={admin.profilePicture ? `https://intime.hirelyft.in${admin.profilePicture}` : "https://avatar.iran.liara.run/public/boy"}
                                   alt=""
                                   style={{ width: '22px', height: '22px', borderRadius: '50%' }}
                                 />
@@ -1596,7 +1596,7 @@ function App() {
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <img 
-                              src={u.profilePicture ? `http://localhost:8000${u.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
+                              src={u.profilePicture ? `https://intime.hirelyft.in${u.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
                               alt="" 
                               style={{ width: '30px', height: '30px', borderRadius: '50%' }} 
                             />
@@ -1684,7 +1684,7 @@ function App() {
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <img 
-                            src={emp.user.profilePicture ? `http://localhost:8000${emp.user.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
+                            src={emp.user.profilePicture ? `https://intime.hirelyft.in${emp.user.profilePicture}` : "https://avatar.iran.liara.run/public/boy"} 
                             alt="" 
                             style={{ width: '32px', height: '32px', borderRadius: '50%' }} 
                           />
@@ -2250,13 +2250,13 @@ const AttendanceTable = ({ records }) => {
                 <td>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     {rec.selfieUrl ? (
-                      <a href={`http://localhost:8000${rec.selfieUrl}`} target="_blank" rel="noopener noreferrer">
-                        <img src={`http://localhost:8000${rec.selfieUrl}`} alt="In" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--card-border)' }} />
+                      <a href={`https://intime.hirelyft.in${rec.selfieUrl}`} target="_blank" rel="noopener noreferrer">
+                        <img src={`https://intime.hirelyft.in${rec.selfieUrl}`} alt="In" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--card-border)' }} />
                       </a>
                     ) : '—'}
                     {rec.checkoutSelfieUrl ? (
-                      <a href={`http://localhost:8000${rec.checkoutSelfieUrl}`} target="_blank" rel="noopener noreferrer">
-                        <img src={`http://localhost:8000${rec.checkoutSelfieUrl}`} alt="Out" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--card-border)' }} />
+                      <a href={`https://intime.hirelyft.in${rec.checkoutSelfieUrl}`} target="_blank" rel="noopener noreferrer">
+                        <img src={`https://intime.hirelyft.in${rec.checkoutSelfieUrl}`} alt="Out" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--card-border)' }} />
                       </a>
                     ) : null}
                   </div>
