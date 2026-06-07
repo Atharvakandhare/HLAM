@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -2197,53 +2198,14 @@ class GroupedAttendanceCard extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _sessionTime('Check-In', Icons.login_rounded, s.checkInTime, const Color(0xFF10B981)),
+                            _sessionSelfie(context, 'Check-In', Icons.login_rounded, s.selfieUrl, s.checkInTime, s.address, const Color(0xFF10B981)),
                             Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
-                            _sessionTime('Check-Out', Icons.logout_rounded, s.checkOutTime, const Color(0xFFEF4444)),
+                            _sessionSelfie(context, 'Check-Out', Icons.logout_rounded, s.checkoutSelfieUrl, s.checkOutTime, s.checkoutAddress, const Color(0xFFEF4444)),
                             Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
                             _sessionTime('Hours', Icons.timer_outlined, null, const Color(0xFF2563EB), label2: s.workingHours),
                           ],
                         ),
-                        if (s.address != null && s.address!.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          const Divider(color: Color(0xFFE2E8F0), height: 1),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(Icons.location_on_rounded, size: 13, color: Color(0xFFEF4444)),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  s.address!,
-                                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (s.mood != null || s.energyLevel != null || s.distanceFromOffice != null) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
-                            children: [
-                              if (s.mood != null)
-                                _tagChip(_moodEmoji(s.mood!), s.mood!.toUpperCase(), const Color(0xFF10B981)),
-                              if (s.energyLevel != null)
-                                _tagChip('🔋', s.energyLevel!.toUpperCase(), const Color(0xFF3B82F6)),
-                              if (s.distanceFromOffice != null)
-                                _tagChip(
-                                  '📍',
-                                  s.distanceFromOffice! < 1000
-                                      ? '${s.distanceFromOffice!.toStringAsFixed(0)}m away'
-                                      : '${(s.distanceFromOffice! / 1000).toStringAsFixed(2)}km away',
-                                  const Color(0xFFF59E0B),
-                                ),
-                            ],
-                          ),
-                        ],
+
                       ],
                     ),
                   );
@@ -2273,27 +2235,282 @@ class GroupedAttendanceCard extends StatelessWidget {
     );
   }
 
-  Widget _tagChip(String emoji, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text('$emoji $label', style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+  Widget _sessionSelfie(
+    BuildContext context,
+    String label,
+    IconData icon,
+    String? imageUrl,
+    DateTime? timestamp,
+    String? address,
+    Color color,
+  ) {
+    String? fullUrl;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      fullUrl = imageUrl.startsWith('http')
+          ? imageUrl
+          : '${ApiService.baseUrl.replaceAll('/api', '')}${imageUrl.startsWith('/') ? '' : '/'}$imageUrl';
+    }
+
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        if (fullUrl != null)
+          GestureDetector(
+            onTap: () => _showSelfieDetail(context, imageUrl!, label, timestamp, address),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Image.network(
+                  fullUrl,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(color),
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    Icons.broken_image_rounded,
+                    size: 14,
+                    color: color,
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFF1F5F9),
+              border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.person_outline_rounded,
+                size: 14,
+                color: Color(0xFF94A3B8),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
-  String _moodEmoji(String mood) {
-    switch (mood.toLowerCase()) {
-      case 'happy': return '😊';
-      case 'sad': return '😢';
-      case 'exhausted': return '😩';
-      case 'angry': return '😤';
-      default: return '😐';
+  void _showSelfieDetail(
+    BuildContext context,
+    String imageUrl,
+    String title,
+    DateTime? timestamp,
+    String? address,
+  ) {
+    final formattedTime = timestamp != null
+        ? DateFormat('hh:mm:ss a').format(timestamp.toLocal())
+        : '—';
+    final formattedDate = timestamp != null
+        ? DateFormat('EEEE, dd MMMM yyyy').format(timestamp.toLocal())
+        : '—';
+
+    String? fullUrl;
+    if (imageUrl.isNotEmpty) {
+      fullUrl = imageUrl.startsWith('http')
+          ? imageUrl
+          : '${ApiService.baseUrl.replaceAll('/api', '')}${imageUrl.startsWith('/') ? '' : '/'}$imageUrl';
     }
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 24,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(28),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AspectRatio(
+                              aspectRatio: 3 / 4,
+                              child: fullUrl != null
+                                  ? Image.network(
+                                      fullUrl,
+                                      fit: BoxFit.cover,
+                                      loadingBuilder: (context, child, loadingProgress) {
+                                        if (loadingProgress == null) return child;
+                                        return const Center(
+                                          child: CircularProgressIndicator(color: Color(0xFF2563EB)),
+                                        );
+                                      },
+                                      errorBuilder: (context, error, stackTrace) => const Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.broken_image_rounded, color: Colors.grey, size: 48),
+                                            SizedBox(height: 12),
+                                            Text(
+                                              'Failed to load selfie image',
+                                              style: TextStyle(color: Colors.grey, fontSize: 13),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  : const Center(
+                                      child: Icon(Icons.image_not_supported_rounded, color: Colors.grey, size: 48),
+                                    ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              width: double.infinity,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                border: Border(
+                                  top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        title.toLowerCase().contains('check-in')
+                                            ? Icons.login_rounded
+                                            : Icons.logout_rounded,
+                                        color: title.toLowerCase().contains('check-in')
+                                            ? const Color(0xFF10B981)
+                                            : const Color(0xFFEF4444),
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        title.toUpperCase(),
+                                        style: TextStyle(
+                                          color: title.toLowerCase().contains('check-in')
+                                              ? const Color(0xFF10B981)
+                                              : const Color(0xFFEF4444),
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                          letterSpacing: 1.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    formattedTime,
+                                    style: const TextStyle(
+                                      color: Color(0xFF0F172A),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 22,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    formattedDate,
+                                    style: const TextStyle(
+                                      color: Color(0xFF64748B),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  if (address != null && address.isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    const Divider(color: Color(0xFFE2E8F0), height: 1),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.location_on_rounded, size: 14, color: Color(0xFFEF4444)),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            address,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF475569),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FloatingActionButton(
+                      backgroundColor: Colors.white,
+                      onPressed: () => Navigator.pop(context),
+                      mini: true,
+                      child: const Icon(Icons.close_rounded, color: Colors.black),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
+
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
