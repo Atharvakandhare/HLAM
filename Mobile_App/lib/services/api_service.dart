@@ -29,19 +29,7 @@ class ApiService {
   static ApiException? lastApiException;
 
   // Live API production server
-  // static const String baseUrl = 'https://intime.hirelyft.in/api';
-
-  // Localhost backend running on port 8000 (with emulator loopback fallback)
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000/api';
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      // Android Emulator loopback IP to access host PC's localhost
-      return 'http://10.0.2.2:8000/api';
-    } else {
-      return 'http://localhost:8000/api';
-    }
-  }
+  static const String baseUrl = 'https://intime.hirelyft.in/api';
 
 
   final _storage = const FlutterSecureStorage(
