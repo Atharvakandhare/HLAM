@@ -55,7 +55,7 @@ class MyApp extends StatelessWidget {
       providers: [ChangeNotifierProvider(create: (_) => AppProvider())],
       child: MaterialApp(
         navigatorKey: navigatorKey,
-        title: 'HL Attendee',
+        title: 'HLAM',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,

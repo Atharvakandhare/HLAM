@@ -11,7 +11,7 @@ Future<void> saveAndShareFile(List<int> bytes, String fileName, {String? shareTe
   await SharePlus.instance.share(
     ShareParams(
       files: [XFile(path)],
-      text: shareText ?? 'HL Attendee File',
+      text: shareText ?? 'HLAM File',
     ),
   );
 }

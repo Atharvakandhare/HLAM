@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'HL Attendee',
+                    'HLAM',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 28,

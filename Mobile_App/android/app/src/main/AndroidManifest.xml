@@ -36,7 +36,7 @@
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
     <application
-        android:label="HL Attendee"
+        android:label="HLAM"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
 

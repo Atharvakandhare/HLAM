@@ -89,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
                 const SizedBox(height: 32),
                 const Text(
-                  'HL Attendee',
+                  'HLAM',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,
