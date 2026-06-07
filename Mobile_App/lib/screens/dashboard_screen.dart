@@ -10,6 +10,7 @@ import '../models/user.dart';
 import '../models/attendance.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../services/reminder_alarm_service.dart';
 import 'attendance_capture_screen.dart';
 import 'admin_leaves_screen.dart';
 import 'admin_marketing_tracking_screen.dart';
@@ -104,6 +105,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           provider.fetchMyLeaves(),
           provider.fetchUserStats(),
         ]);
+
+        try {
+          final hasCheckedIn = provider.todayAttendance != null;
+          final hasCheckedOut = provider.todayAttendance?.checkOutTime != null;
+          await ReminderAlarmService.scheduleAlarms(
+            user,
+            hasCheckedIn: hasCheckedIn,
+            hasCheckedOut: hasCheckedOut,
+          );
+        } catch (alarmError) {
+          debugPrint("Failed to schedule alarms: $alarmError");
+        }
       }
     }
 
@@ -193,6 +206,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _isAlarmShowing = true;
     });
+
+    try {
+      ReminderAlarmService.triggerImmediateAlarm("Attendance Alert", message);
+    } catch (e) {
+      debugPrint("Failed to trigger immediate alarm: $e");
+    }
 
     _alarmAutoCloseTimer?.cancel();
     _alarmAutoCloseTimer = Timer(const Duration(seconds: 60), () {
@@ -307,6 +326,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
     ).then((_) {
       _isAlarmShowing = false;
+      ReminderAlarmService.cancelActiveReminders();
     });
   }
 

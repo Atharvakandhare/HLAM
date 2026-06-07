@@ -14,6 +14,7 @@ import '../models/attendance.dart';
 import '../models/holiday.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/reminder_alarm_service.dart';
 
 
 class AppProvider extends ChangeNotifier {
@@ -407,6 +408,12 @@ class AppProvider extends ChangeNotifier {
       await fetchTodayAttendance();
       await fetchUserStats();
 
+      try {
+        await ReminderAlarmService.cancelCheckInReminder();
+      } catch (alarmError) {
+        debugPrint("Failed to cancel check-in alarm: $alarmError");
+      }
+
       // Trigger background tracking only for Marketing department employees with Field Work or Office + Field Work
       try {
         final user = await AuthService().getUser();
@@ -464,6 +471,12 @@ class AppProvider extends ChangeNotifier {
       });
       await fetchTodayAttendance();
       await fetchUserStats();
+
+      try {
+        await ReminderAlarmService.cancelCheckOutReminder();
+      } catch (alarmError) {
+        debugPrint("Failed to cancel check-out alarm: $alarmError");
+      }
 
       try {
         if (!kIsWeb) {
@@ -628,6 +641,12 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    try {
+      await ReminderAlarmService.cancelAllAlarms();
+    } catch (alarmError) {
+      debugPrint("Failed to cancel alarms on logout: $alarmError");
+    }
+
     await _apiService.logout();
     _employees.clear();
     _attendance.clear();
