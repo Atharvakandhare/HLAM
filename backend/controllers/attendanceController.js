@@ -1,5 +1,21 @@
-const { Attendance, User, CompanySetting, Team, Holiday, HolidayException } = require('../associations');
+const { Attendance, User, CompanySetting, Team, Holiday, HolidayException, Shift } = require('../associations');
 const { Op, Sequelize } = require('sequelize');
+
+// Helper to parse time string "HH:MM:SS" into milliseconds from midnight
+const getTimeMs = (timeStr) => {
+  if (!timeStr) return 0;
+  const [hrs, mins, secs] = timeStr.split(':').map(Number);
+  return ((hrs * 60 + mins) * 60 + (secs || 0)) * 1000;
+};
+
+// Helper to get milliseconds from midnight of a Date object
+const getDateMsSinceMidnight = (date) => {
+  if (!date) return 0;
+  const hrs = date.getHours();
+  const mins = date.getMinutes();
+  const secs = date.getSeconds();
+  return ((hrs * 60 + mins) * 60 + secs) * 1000;
+};
 
 // Helper function to generate Google Maps URL
 const generateMapUrl = (latitude, longitude) => {
@@ -132,13 +148,57 @@ const checkIn = async (req, res) => {
       return res.status(400).json({ message: 'You have an active session. Please check out first.' });
     }
 
-    // ── Late Status Calculation ────────────────────────────────────────────────
+    // ── Shift and Late Status Calculation ──────────────────────────────────────
+    const todayRecords = await Attendance.findAll({ where: { userId, date: dateOnly } });
+    let shiftId = req.body.shiftId;
+    let explicitNone = false;
+    if (shiftId === 'none' || shiftId === '0' || shiftId === 0) {
+      shiftId = null;
+      explicitNone = true;
+    } else if (shiftId === undefined || shiftId === '') {
+      shiftId = null;
+    }
+    let isLateIn = false;
+    let isEarlyIn = false;
     let status = 'present';
-    if (setting && setting.checkInTime) {
-      const nowStr = today.toTimeString().split(' ')[0]; // HH:MM:SS
-      if (nowStr > setting.checkInTime) {
-        status = 'late';
+
+    if (todayRecords.length === 0) {
+      // First check-in of the day
+      if (!shiftId && !explicitNone) {
+        const user = await User.findByPk(userId);
+        if (user && user.defaultShiftId) {
+          shiftId = user.defaultShiftId;
+        }
       }
+
+      if (shiftId) {
+        const shift = await Shift.findOne({ where: { id: shiftId, companyId: userCompanyId } });
+        if (shift) {
+          const checkInMs = getDateMsSinceMidnight(today);
+          const shiftStartMs = getTimeMs(shift.checkInTime);
+          const diffMins = (checkInMs - shiftStartMs) / (60 * 1000);
+
+          if (diffMins > shift.lateInLimit) {
+            isLateIn = true;
+            status = 'late';
+          } else if (diffMins < -shift.earlyInLimit) {
+            isEarlyIn = true;
+          }
+        }
+      } else if (setting && setting.checkInTime) {
+        // Fallback to company settings if no shift exists
+        const checkInMs = getDateMsSinceMidnight(today);
+        const companyStartMs = getTimeMs(setting.checkInTime);
+        const diffMins = (checkInMs - companyStartMs) / (60 * 1000);
+
+        if (diffMins > 15) {
+          status = 'late';
+        }
+      }
+    } else {
+      // Subsequent check-ins use the same shift as the first session of today
+      shiftId = todayRecords[0].shiftId;
+      status = todayRecords[0].status;
     }
 
     const record = await Attendance.create({
@@ -155,6 +215,9 @@ const checkIn = async (req, res) => {
       mood: mood || null,
       energyLevel: energyLevel || null,
       distanceFromOffice,
+      shiftId,
+      isLateIn,
+      isEarlyIn,
     });
 
     const attendanceData = record.toJSON();
@@ -222,30 +285,108 @@ const checkOut = async (req, res) => {
       record.distanceFromOffice = checkoutDistanceFromOffice;
     }
 
-    // Calculate working hours
+    // Calculate working hours (diffMs for this session + sum other sessions for today)
+    let totalWorkedMs = 0;
     if (record.checkInTime) {
       const diffMs = checkOutTime - new Date(record.checkInTime);
-      const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      totalWorkedMs = diffMs;
+
+      // Find other check-out records of today for this user
+      const otherRecords = await Attendance.findAll({
+        where: {
+          userId,
+          date: record.date,
+          id: { [Op.ne]: record.id },
+          checkOutTime: { [Op.ne]: null }
+        }
+      });
+
+      for (const r of otherRecords) {
+        const sessionMs = new Date(r.checkOutTime) - new Date(r.checkInTime);
+        totalWorkedMs += sessionMs;
+      }
+
+      const diffHrs = Math.floor(totalWorkedMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((totalWorkedMs % (1000 * 60 * 60)) / (1000 * 60));
       record.workingHours = `${diffHrs}h ${diffMins}m`;
-    }
 
-    // Early checkout half-day calculation
-    if (setting && setting.checkInTime && setting.checkOutTime) {
-      try {
-        const schedStart = new Date(record.date + 'T' + setting.checkInTime);
-        const schedEnd = new Date(record.date + 'T' + setting.checkOutTime);
-        const totalShiftMs = schedEnd - schedStart;
-        const remainingMs = schedEnd - checkOutTime;
+      // Early checkout / Late checkout / Overtime shift calculation
+      if (record.shiftId) {
+        const shift = await Shift.findByPk(record.shiftId);
+        if (shift) {
+          const checkOutMs = getDateMsSinceMidnight(checkOutTime);
+          const shiftEndMs = getTimeMs(shift.checkOutTime);
+          const diffMinsFromEnd = (checkOutMs - shiftEndMs) / (60 * 1000);
 
-        if (remainingMs > 0 && totalShiftMs > 0) {
-          const ratio = remainingMs / totalShiftMs;
-          if (ratio > 0.5) {
-            record.status = 'half_day';
+          // Early Out Check
+          if (diffMinsFromEnd < -shift.earlyOutLimit) {
+            record.isEarlyOut = true;
+          }
+
+          // Late Out Check
+          if (diffMinsFromEnd > shift.lateOutLimit) {
+            record.isLateOut = true;
+          }
+
+          // Overtime Check: Check if overtime is allowed for this daily session
+          const isOvertimeAllowed = record.overtimeAllowed || otherRecords.some(r => r.overtimeAllowed === true);
+          if (isOvertimeAllowed && diffMinsFromEnd > 0) {
+            const otHrs = Math.floor(diffMinsFromEnd / 60);
+            const otMins = Math.floor(diffMinsFromEnd % 60);
+            record.overtimeDuration = `${otHrs}h ${otMins}m`;
+          }
+
+          // Overall status decision based on total hours
+          const shiftStartMs = getTimeMs(shift.checkInTime);
+          const requiredShiftMs = shiftEndMs - shiftStartMs;
+
+          if (totalWorkedMs >= requiredShiftMs) {
+            record.status = 'present';
+            // Propagate present status to all of today's records for this user
+            if (otherRecords.length > 0) {
+              await Attendance.update({ status: 'present' }, {
+                where: { userId, date: record.date }
+              });
+            }
+          } else {
+            const ratio = totalWorkedMs / requiredShiftMs;
+            const finalStatus = ratio < 0.5 ? 'half_day' : 'present';
+            record.status = finalStatus;
+            if (otherRecords.length > 0) {
+              await Attendance.update({ status: finalStatus }, {
+                where: { userId, date: record.date }
+              });
+            }
           }
         }
-      } catch (err) {
-        console.error('Error calculating half day status:', err.message);
+      } else if (setting && setting.checkInTime && setting.checkOutTime) {
+        // Fallback to company settings if no shift
+        try {
+          const schedStart = new Date(record.date + 'T' + setting.checkInTime);
+          const schedEnd = new Date(record.date + 'T' + setting.checkOutTime);
+          const totalShiftMs = schedEnd - schedStart;
+
+          // Propagate present/half-day status based on total worked ms
+          if (totalWorkedMs >= totalShiftMs) {
+            record.status = 'present';
+            if (otherRecords.length > 0) {
+              await Attendance.update({ status: 'present' }, {
+                where: { userId, date: record.date }
+              });
+            }
+          } else {
+            const ratio = totalWorkedMs / totalShiftMs;
+            const finalStatus = ratio < 0.5 ? 'half_day' : 'present';
+            record.status = finalStatus;
+            if (otherRecords.length > 0) {
+              await Attendance.update({ status: finalStatus }, {
+                where: { userId, date: record.date }
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Error calculating company settings checkout status:', err.message);
+        }
       }
     }
 
@@ -597,6 +738,81 @@ const getUserStats = async (req, res) => {
   }
 };
 
+// Allocate Overtime Permission (Manager/TL/Admin)
+const updateOvertimePermission = async (req, res) => {
+  try {
+    const requesterRole = req.user.role;
+    const requesterCompanyId = req.user.companyId;
+    const requesterId = req.user.id;
+
+    // Only Admin, Manager, Team Leader can manage overtime
+    if (!['system_admin', 'company_admin', 'manager', 'team_leader'].includes(requesterRole)) {
+      return res.status(403).json({ message: 'Unauthorized. Only managers, team leaders, or admins can manage overtime.' });
+    }
+
+    const { userId, date, overtimeAllowed } = req.body;
+    if (!userId || !date) {
+      return res.status(400).json({ message: 'userId and date are required.' });
+    }
+
+    // Load target user
+    const targetUser = await User.findByPk(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // Verify company scope
+    if (targetUser.companyId !== requesterCompanyId) {
+      return res.status(403).json({ message: 'You can only allocate overtime to employees within your own company.' });
+    }
+
+    // Role-based hierarchy scope verification
+    if (['manager', 'team_leader'].includes(requesterRole)) {
+      const managedTeams = await Team.findAll({
+        where: {
+          [Op.or]: [
+            { managerId: requesterId },
+            { teamLeaderId: requesterId }
+          ]
+        },
+        attributes: ['id']
+      });
+      const teamIds = managedTeams.map(t => t.id);
+
+      if (!targetUser.teamId || !teamIds.includes(targetUser.teamId)) {
+        return res.status(403).json({ message: 'You can only allocate overtime to members of your managed teams.' });
+      }
+    }
+
+    // Find or create attendance record for that date
+    let [record] = await Attendance.findOrCreate({
+      where: { userId, date },
+      defaults: {
+        selfieUrl: 'system-placeholder', // fallback placeholder
+        status: 'present',
+        loginStatus: 'success'
+      }
+    });
+
+    record.overtimeAllowed = overtimeAllowed === true || overtimeAllowed === 'true';
+    await record.save();
+
+    // Propagate overtime allowed to all attendance rows of the same day (for multiple sessions)
+    await Attendance.update(
+      { overtimeAllowed: record.overtimeAllowed },
+      { where: { userId, date } }
+    );
+
+    return res.json({
+      message: `Overtime permission ${record.overtimeAllowed ? 'granted' : 'revoked'} successfully for user ${targetUser.name} on ${date}.`,
+      attendance: record
+    });
+  } catch (error) {
+    console.error('[Overtime Permission] Error:', error);
+    return res.status(500).json({ message: 'Failed to update overtime permission', error: error.message });
+  }
+};
+
 module.exports = {
   checkIn,
   checkOut,
@@ -607,4 +823,5 @@ module.exports = {
   getById,
   deleteAttendance,
   getUserStats,
+  updateOvertimePermission,
 };

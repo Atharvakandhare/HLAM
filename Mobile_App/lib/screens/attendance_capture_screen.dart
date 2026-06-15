@@ -16,6 +16,7 @@ class AttendanceCaptureScreen extends StatefulWidget {
   final String? checkoutReason;
   final String? mood;
   final String? energyLevel;
+  final int? shiftId;
 
   const AttendanceCaptureScreen({
     super.key,
@@ -24,6 +25,7 @@ class AttendanceCaptureScreen extends StatefulWidget {
     this.checkoutReason,
     this.mood,
     this.energyLevel,
+    this.shiftId,
   });
 
   @override
@@ -326,6 +328,7 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
           address: provider.currentAddress,
           mood: widget.mood,
           energyLevel: widget.energyLevel,
+          shiftId: widget.shiftId,
         );
       }
 

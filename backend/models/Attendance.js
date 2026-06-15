@@ -88,6 +88,41 @@ const Attendance = sequelize.define(
       field: 'distance_from_office',
       comment: 'Distance in metres from the company office at check-in time',
     },
+    shiftId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      field: 'shift_id',
+    },
+    isLateIn: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_late_in',
+    },
+    isLateOut: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_late_out',
+    },
+    isEarlyIn: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_early_in',
+    },
+    isEarlyOut: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_early_out',
+    },
+    overtimeAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'overtime_allowed',
+    },
+    overtimeDuration: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'overtime_duration',
+    },
   },
   {
     tableName: 'attendances',

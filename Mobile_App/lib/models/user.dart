@@ -15,6 +15,7 @@ class User {
   final String? city;
   final String? workMode;
   final String? workType;
+  final int? defaultShiftId;
   
   // Nested structures mapped for easier access
   final String? companyName;
@@ -45,6 +46,7 @@ class User {
     this.city,
     this.workMode,
     this.workType,
+    this.defaultShiftId,
     this.companyName,
     this.companyCheckInTime,
     this.companyCheckOutTime,
@@ -89,6 +91,7 @@ class User {
       city: json['city'],
       workMode: json['workMode'] ?? json['work_mode'],
       workType: json['workType'] ?? json['work_type'],
+      defaultShiftId: json['defaultShiftId'] ?? json['default_shift_id'],
       
       companyName: companyMap?['name'],
       companyCheckInTime: settingsMap?['checkInTime'] ?? settingsMap?['check_in_time'],
@@ -121,6 +124,7 @@ class User {
       'city': city,
       'workMode': workMode,
       'workType': workType,
+      'defaultShiftId': defaultShiftId,
       'companyName': companyName,
       'companyCheckInTime': companyCheckInTime,
       'companyCheckOutTime': companyCheckOutTime,
@@ -133,4 +137,5 @@ class User {
       'teamLeaderName': teamLeaderName,
     };
   }
+
 }

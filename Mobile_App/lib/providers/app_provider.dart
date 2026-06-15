@@ -1,5 +1,6 @@
 // ignore_for_file: unnecessary_import
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -8,10 +9,13 @@ import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:http/http.dart' as http;
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../models/user.dart';
 import '../models/attendance.dart';
 import '../models/holiday.dart';
+import '../models/shift.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/reminder_alarm_service.dart';
@@ -19,6 +23,7 @@ import '../services/reminder_alarm_service.dart';
 
 class AppProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
+  StreamSubscription<String>? _fcmTokenRefreshSubscription;
   String? _companyLogoUrl;
   String? get companyLogoUrl => _companyLogoUrl;
 
@@ -385,6 +390,7 @@ class AppProvider extends ChangeNotifier {
     String status = 'success',
     String? mood,
     String? energyLevel,
+    int? shiftId,
   }) async {
     try {
       String? finalSelfieUrl = selfieUrl;
@@ -404,6 +410,7 @@ class AppProvider extends ChangeNotifier {
         'loginStatus': status,
         if (mood != null) 'mood': mood,
         if (energyLevel != null) 'energyLevel': energyLevel,
+        if (shiftId != null) 'shiftId': shiftId,
       });
       await fetchTodayAttendance();
       await fetchUserStats();
@@ -589,6 +596,55 @@ class AppProvider extends ChangeNotifier {
     return true;
   }
 
+  Future<String> getCleanEnglishAddress(double lat, double long, String rawAddress) async {
+    // If rawAddress is purely ASCII, it's already safe.
+    if (!RegExp(r'[^\x00-\x7F]').hasMatch(rawAddress)) {
+      return rawAddress.length > 255 ? rawAddress.substring(0, 255) : rawAddress;
+    }
+
+    // Attempt web-based translation via OpenStreetMap Nominatim
+    String? webAddress;
+    try {
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$long&accept-language=en'
+      );
+      final response = await http.get(url, headers: {
+        'User-Agent': 'AttendanceManagementApp/1.0',
+      }).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        webAddress = data['display_name'];
+      }
+    } catch (e) {
+      debugPrint("OSM geocoding translation fallback failed: $e");
+    }
+
+    // Use web address if valid and purely ASCII
+    if (webAddress != null && webAddress.isNotEmpty && !RegExp(r'[^\x00-\x7F]').hasMatch(webAddress)) {
+      return webAddress.length > 255 ? webAddress.substring(0, 255) : webAddress;
+    }
+
+    // If web geocoder failed or still returned non-ASCII, sanitize the address
+    final String addressToSanitize = webAddress ?? rawAddress;
+    String sanitized = addressToSanitize.replaceAll(RegExp(r'[^\x00-\x7F]'), '');
+    
+    // Clean up multiple spaces, consecutive commas, leading/trailing commas
+    sanitized = sanitized
+        .replaceAll(RegExp(r',\s*,'), ',')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (sanitized.startsWith(',')) sanitized = sanitized.substring(1).trim();
+    if (sanitized.endsWith(',')) sanitized = sanitized.substring(0, sanitized.length - 1).trim();
+
+    // If the sanitized string contains no letters or numbers, use coordinates
+    if (sanitized.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').isEmpty) {
+      return "${lat.toStringAsFixed(5)}, ${long.toStringAsFixed(5)}";
+    }
+
+    return sanitized.length > 255 ? sanitized.substring(0, 255) : sanitized;
+  }
+
   Future<void> getCurrentPosition() async {
     await handleLocationPermission();
     try {
@@ -613,9 +669,7 @@ class AppProvider extends ChangeNotifier {
           final Placemark place = placemarks[0];
           final rawAddress =
               "${place.street}, ${place.locality}, ${place.postalCode}, ${place.country}";
-          _currentAddress = rawAddress.length > 255
-              ? rawAddress.substring(0, 255)
-              : rawAddress;
+          _currentAddress = await getCleanEnglishAddress(position.latitude, position.longitude, rawAddress);
           notifyListeners();
         }
       } catch (geocodeError) {
@@ -640,11 +694,60 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> syncFcmToken() async {
+    try {
+      final token = await _apiService.getToken();
+      if (token == null) {
+        debugPrint("[FCM] syncFcmToken: No auth token, skipping FCM token sync.");
+        return;
+      }
+      if (kIsWeb) {
+        debugPrint("[FCM] syncFcmToken: FCM not supported/configured on web, skipping.");
+        return;
+      }
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        debugPrint("[FCM] FCM Token: $fcmToken");
+        await _apiService.updateFcmToken(fcmToken);
+        debugPrint("[FCM] FCM Token successfully synced with backend.");
+      }
+
+      // Listen to token refreshes
+      _fcmTokenRefreshSubscription?.cancel();
+      _fcmTokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+        try {
+          final currentAuthToken = await _apiService.getToken();
+          if (currentAuthToken != null) {
+            await _apiService.updateFcmToken(newToken);
+            debugPrint("[FCM] FCM Token refreshed and synced: $newToken");
+          }
+        } catch (err) {
+          debugPrint("[FCM] Error syncing refreshed FCM token: $err");
+        }
+      });
+    } catch (e) {
+      debugPrint("[FCM] syncFcmToken: Error: $e");
+    }
+  }
+
   Future<void> logout() async {
     try {
       await ReminderAlarmService.cancelAllAlarms();
     } catch (alarmError) {
       debugPrint("Failed to cancel alarms on logout: $alarmError");
+    }
+
+    _fcmTokenRefreshSubscription?.cancel();
+    _fcmTokenRefreshSubscription = null;
+
+    try {
+      final token = await _apiService.getToken();
+      if (token != null && !kIsWeb) {
+        await _apiService.updateFcmToken('');
+        debugPrint("[FCM] FCM token cleared on backend during logout.");
+      }
+    } catch (e) {
+      debugPrint("Failed to clear FCM token on logout: $e");
     }
 
     await _apiService.logout();
@@ -653,6 +756,12 @@ class AppProvider extends ChangeNotifier {
     _todayAttendance = null;
     _leaves.clear();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _fcmTokenRefreshSubscription?.cancel();
+    super.dispose();
   }
 
   // --- Leaves Management ---
@@ -1063,6 +1172,101 @@ class AppProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint("Error updating company settings: $e");
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // --- Shift Management State & Methods ---
+  List<Shift> _shifts = [];
+  List<Shift> get shifts => _shifts;
+
+  Future<void> fetchShifts() async {
+    _isLoading = true;
+    _safeNotify();
+    try {
+      final list = await _apiService.listShifts();
+      _shifts = list.map((e) => Shift.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint("Error fetching shifts: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> createShift(Map<String, dynamic> shiftData) async {
+    _isLoading = true;
+    _safeNotify();
+    try {
+      await _apiService.createShift(shiftData);
+      await fetchShifts();
+    } catch (e) {
+      debugPrint("Error creating shift: $e");
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateShift(Map<String, dynamic> shiftData) async {
+    _isLoading = true;
+    _safeNotify();
+    try {
+      await _apiService.updateShift(shiftData);
+      await fetchShifts();
+    } catch (e) {
+      debugPrint("Error updating shift: $e");
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteShift(int shiftId) async {
+    _isLoading = true;
+    _safeNotify();
+    try {
+      await _apiService.deleteShift(shiftId);
+      await fetchShifts();
+    } catch (e) {
+      debugPrint("Error deleting shift: $e");
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> assignShift(int userId, int? shiftId) async {
+    _isLoading = true;
+    _safeNotify();
+    try {
+      await _apiService.assignShift(userId, shiftId);
+      if (_employees.isNotEmpty) {
+        await fetchEmployees();
+      }
+    } catch (e) {
+      debugPrint("Error assigning shift: $e");
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateOvertimePermission(int userId, String date, bool overtimeAllowed) async {
+    _isLoading = true;
+    _safeNotify();
+    try {
+      await _apiService.updateOvertimePermission(userId, date, overtimeAllowed);
+      await fetchUserStats();
+    } catch (e) {
+      debugPrint("Error updating overtime permission: $e");
       rethrow;
     } finally {
       _isLoading = false;

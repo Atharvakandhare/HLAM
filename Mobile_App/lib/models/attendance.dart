@@ -23,6 +23,12 @@ class Attendance {
   final String? mood;
   final String? energyLevel;
   final double? distanceFromOffice;
+  final int? shiftId;
+  final bool isLateIn;
+  final bool isLateOut;
+  final bool isEarlyIn;
+  final bool isEarlyOut;
+  final bool overtimeAllowed;
 
   Attendance({
     required this.id,
@@ -47,6 +53,12 @@ class Attendance {
     this.mood,
     this.energyLevel,
     this.distanceFromOffice,
+    this.shiftId,
+    this.isLateIn = false,
+    this.isLateOut = false,
+    this.isEarlyIn = false,
+    this.isEarlyOut = false,
+    this.overtimeAllowed = false,
   });
 
   String get workingHours {
@@ -130,8 +142,15 @@ class Attendance {
       distanceFromOffice: json['distanceFromOffice'] != null || json['distance_from_office'] != null
           ? double.tryParse((json['distanceFromOffice'] ?? json['distance_from_office']).toString())
           : null,
+      shiftId: json['shiftId'] ?? json['shift_id'],
+      isLateIn: json['isLateIn'] == true || json['is_late_in'] == true || json['isLateIn'] == 1 || json['is_late_in'] == 1,
+      isLateOut: json['isLateOut'] == true || json['is_late_out'] == true || json['isLateOut'] == 1 || json['is_late_out'] == 1,
+      isEarlyIn: json['isEarlyIn'] == true || json['is_early_in'] == true || json['isEarlyIn'] == 1 || json['is_early_in'] == 1,
+      isEarlyOut: json['isEarlyOut'] == true || json['is_early_out'] == true || json['isEarlyOut'] == 1 || json['is_early_out'] == 1,
+      overtimeAllowed: json['overtimeAllowed'] == true || json['overtime_allowed'] == true || json['overtimeAllowed'] == 1 || json['overtime_allowed'] == 1,
     );
   }
+
 
   static String _normalizeStatus(dynamic status, dynamic time) {
     String s = (status ?? 'pending').toString().toLowerCase();

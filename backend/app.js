@@ -7,6 +7,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const holidayRoutes = require('./routes/holidayRoutes');
+const shiftRoutes = require('./routes/shiftRoutes');
 
 const app = express();
 const fs = require('fs');
@@ -57,6 +58,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/location', locationRoutes);
 app.use('/api/holidays', holidayRoutes);
+app.use('/api/shifts', shiftRoutes);
 
 
 module.exports = app;

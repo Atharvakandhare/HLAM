@@ -2,8 +2,13 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 import '../models/attendance.dart';
+import '../models/user.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
+import '../providers/app_provider.dart';
+import '../utils/app_messages.dart';
 
 class AttendanceDetailsScreen extends StatelessWidget {
   final Attendance record;
@@ -217,6 +222,23 @@ class AttendanceDetailsScreen extends StatelessWidget {
                   children: [
                     _buildOverviewCard(dateStr, dayStr),
                     const SizedBox(height: 16),
+                    FutureBuilder<User?>(
+                      future: AuthService().getUser(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData && snapshot.data != null) {
+                          final user = snapshot.data!;
+                          if (user.role != 'employee') {
+                            return Column(
+                              children: [
+                                OvertimeToggleCard(record: record, currentUser: user),
+                                const SizedBox(height: 16),
+                              ],
+                            );
+                          }
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
                     // Mood & Energy Card
                     if (record.mood != null || record.energyLevel != null)
                       CollapsibleMoodEnergyCard(record: record),
@@ -1078,3 +1100,103 @@ class _CollapsibleMoodEnergyCardState extends State<CollapsibleMoodEnergyCard> w
     );
   }
 }
+
+class OvertimeToggleCard extends StatefulWidget {
+  final Attendance record;
+  final User currentUser;
+
+  const OvertimeToggleCard({super.key, required this.record, required this.currentUser});
+
+  @override
+  State<OvertimeToggleCard> createState() => _OvertimeToggleCardState();
+}
+
+class _OvertimeToggleCardState extends State<OvertimeToggleCard> {
+  late bool _overtimeAllowed;
+  bool _updating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _overtimeAllowed = widget.record.overtimeAllowed;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF4F46E5).withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.more_time_rounded, color: Color(0xFF4F46E5), size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Overtime Permission',
+                  style: TextStyle(color: Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  _overtimeAllowed ? 'Allowed for this day' : 'Not allowed',
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          _updating
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF4F46E5)),
+                )
+              : Switch.adaptive(
+                  value: _overtimeAllowed,
+                  // ignore: deprecated_member_use
+                  activeColor: const Color(0xFF4F46E5),
+                  onChanged: (val) async {
+                    setState(() => _updating = true);
+                    try {
+                      final provider = Provider.of<AppProvider>(context, listen: false);
+                      await provider.updateOvertimePermission(
+                        widget.record.userId,
+                        widget.record.date,
+                        val,
+                      );
+                      if (!mounted) return;
+                      setState(() {
+                        _overtimeAllowed = val;
+                      });
+                      if (!context.mounted) return;
+                      AppMessages.showSuccess(
+                        context,
+                        val ? 'Overtime permission granted.' : 'Overtime permission revoked.',
+                      );
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      AppMessages.showError(context, e.toString().replaceFirst('Exception: ', ''));
+                    } finally {
+                      if (mounted) {
+                        setState(() => _updating = false);
+                      }
+                    }
+                  },
+                ),
+        ],
+      ),
+    );
+  }
+}
+

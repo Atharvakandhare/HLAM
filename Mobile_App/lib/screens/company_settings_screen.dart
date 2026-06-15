@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../providers/app_provider.dart';
 import '../utils/app_messages.dart';
+import 'shift_management_screen.dart';
 
 class CompanySettingsScreen extends StatefulWidget {
   const CompanySettingsScreen({super.key});
@@ -71,7 +72,10 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
     setState(() => _loadingSettings = true);
     try {
       final provider = Provider.of<AppProvider>(context, listen: false);
-      await provider.fetchCompanySettings();
+      await Future.wait([
+        provider.fetchCompanySettings(),
+        provider.fetchShifts(),
+      ]);
       
       // Populate fields from provider
       if (provider.checkInTime != null) {
@@ -160,6 +164,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
   }
 
   Future<void> _fetchCurrentLiveLocation() async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
     setState(() => _fetchingLocation = true);
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -209,9 +214,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
               .where((s) => s.isNotEmpty)
               .join(', ');
               
-          _addressController.text = formatted.length > 255 
-              ? formatted.substring(0, 255) 
-              : formatted;
+          _addressController.text = await provider.getCleanEnglishAddress(position.latitude, position.longitude, formatted);
         } else {
           _addressController.text = 'Latitude: ${position.latitude}, Longitude: ${position.longitude}';
         }
@@ -315,6 +318,13 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
                       const SizedBox(height: 12),
                       _buildLeavesPolicyCard(),
                       
+                      const SizedBox(height: 24),
+
+                      // Shift Configuration Section
+                      _buildSectionHeader(Icons.pending_actions_rounded, 'Shift Management'),
+                      const SizedBox(height: 12),
+                      _buildShiftsCard(),
+
                       const SizedBox(height: 32),
                       
                       // Action buttons
@@ -676,6 +686,119 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
               color: Colors.grey,
               fontSize: 12,
               height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShiftsCard() {
+    final provider = Provider.of<AppProvider>(context);
+    final shiftCount = provider.shifts.length;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4F46E5).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.schedule_rounded,
+                  color: Color(0xFF4F46E5),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Shift Configurations',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$shiftCount active shift${shiftCount == 1 ? '' : 's'} configured',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Configure daily shift timings (e.g. morning, night, custom rotations) and assign default shifts to employees to calculate accurate Late In / Early Out status and working hours.',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF4F46E5), Color(0xFF3B82F6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4F46E5).withValues(alpha: 0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ShiftManagementScreen()),
+                ).then((_) => _loadCompanySettings()); // reload to refresh active count
+              },
+              icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+              label: const Text(
+                'Manage Shifts & Assignments',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
             ),
           ),
         ],

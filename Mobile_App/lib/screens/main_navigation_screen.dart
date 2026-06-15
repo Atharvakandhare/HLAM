@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'dashboard_screen.dart';
 import 'attendance_screen.dart';
 import 'leave_screen.dart';
 import 'profile_screen.dart';
 import '../services/auth_service.dart';
 import '../models/user.dart';
+import '../providers/app_provider.dart';
 
 class SwitchTabNotification extends Notification {
   final int index;
@@ -37,6 +39,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     setState(() {
       _isLoading = false;
     });
+    if (mounted) {
+      Provider.of<AppProvider>(context, listen: false).syncFcmToken();
+    }
   }
 
   void _onBackPressed() {

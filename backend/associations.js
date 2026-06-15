@@ -7,8 +7,17 @@ const Team = require('./models/Team');
 const CompanySetting = require('./models/CompanySetting');
 const Holiday = require('./models/Holiday');
 const HolidayException = require('./models/HolidayException');
+const Shift = require('./models/Shift');
 
 // Define model relationships
+User.belongsTo(Shift, { foreignKey: 'defaultShiftId', as: 'defaultShift' });
+Shift.hasMany(User, { foreignKey: 'defaultShiftId', as: 'users' });
+
+Attendance.belongsTo(Shift, { foreignKey: 'shiftId', as: 'shift' });
+Shift.hasMany(Attendance, { foreignKey: 'shiftId', as: 'attendances' });
+
+Company.hasMany(Shift, { foreignKey: 'companyId', as: 'shifts' });
+Shift.belongsTo(Company, { foreignKey: 'companyId', as: 'company' });
 User.hasMany(Attendance, { foreignKey: 'userId', as: 'attendances' });
 Attendance.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
@@ -55,4 +64,5 @@ module.exports = {
   CompanySetting,
   Holiday,
   HolidayException,
+  Shift,
 };
