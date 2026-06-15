@@ -17,7 +17,7 @@ const User = sequelize.define(
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
+      unique: 'email',
       validate: {
         isEmail: true,
       },
@@ -35,7 +35,7 @@ const User = sequelize.define(
     },
     employeeId: {
       type: DataTypes.STRING,
-      unique: true,
+      unique: 'employee_id',
     },
     isActive: {
       type: DataTypes.BOOLEAN,
@@ -82,6 +82,26 @@ const User = sequelize.define(
       type: DataTypes.ENUM('Work From Office', 'Field Work', 'Office + Field Work'),
       allowNull: true,
       field: 'work_type',
+    },
+    otpCode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'otp_code',
+    },
+    otpExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'otp_expires_at',
+    },
+    defaultShiftId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      field: 'default_shift_id',
+    },
+    fcmToken: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'fcm_token',
     },
   },
   {

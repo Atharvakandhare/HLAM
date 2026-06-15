@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "799188934195",
+    "project_id": "hlam-20982",
+    "storage_bucket": "hlam-20982.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:799188934195:android:5d05bcaa642630d8798d46",
+        "android_client_info": {
+          "package_name": "com.hlam.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPAOFL0WfMKQXhxcp3YRBOh0DcdBoCc0Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
