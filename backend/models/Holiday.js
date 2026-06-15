@@ -35,6 +35,7 @@ const Holiday = sequelize.define(
     underscored: true,
     indexes: [
       {
+        name: 'holidays_company_id_date_unique',
         unique: true,
         fields: ['company_id', 'date'],
       },

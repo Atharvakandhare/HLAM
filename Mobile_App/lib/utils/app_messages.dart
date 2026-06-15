@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../main.dart';
 
 enum MessageType { success, error, info }
 
@@ -131,7 +132,8 @@ class AppMessages {
                 TextButton(
                   onPressed: () {
                     scaffoldMessenger.hideCurrentSnackBar();
-                    _showErrorDetailsDialog(context, rawError ?? message);
+                    final targetContext = context.mounted ? context : (MyApp.navigatorKey.currentContext ?? context);
+                    _showErrorDetailsDialog(targetContext, rawError ?? message);
                   },
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
@@ -174,8 +176,10 @@ class AppMessages {
       statusCode = error.statusCode;
     }
 
+    final targetContext = context.mounted ? context : (MyApp.navigatorKey.currentContext ?? context);
+
     showDialog(
-      context: context,
+      context: targetContext,
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(

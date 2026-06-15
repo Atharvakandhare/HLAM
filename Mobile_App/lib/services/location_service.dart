@@ -63,6 +63,55 @@ class LocationTrackingService {
     });
   }
 
+  static Future<String> _getCleanEnglishAddress(double lat, double long, String rawAddress) async {
+    // If rawAddress is purely ASCII, it's already safe.
+    if (!RegExp(r'[^\x00-\x7F]').hasMatch(rawAddress)) {
+      return rawAddress.length > 255 ? rawAddress.substring(0, 255) : rawAddress;
+    }
+
+    // Attempt web-based translation via OpenStreetMap Nominatim
+    String? webAddress;
+    try {
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$long&accept-language=en'
+      );
+      final response = await http.get(url, headers: {
+        'User-Agent': 'AttendanceManagementApp/1.0',
+      }).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        webAddress = data['display_name'];
+      }
+    } catch (e) {
+      debugPrint("OSM geocoding translation fallback failed: $e");
+    }
+
+    // Use web address if valid and purely ASCII
+    if (webAddress != null && webAddress.isNotEmpty && !RegExp(r'[^\x00-\x7F]').hasMatch(webAddress)) {
+      return webAddress.length > 255 ? webAddress.substring(0, 255) : webAddress;
+    }
+
+    // If web geocoder failed or still returned non-ASCII, sanitize the address
+    final String addressToSanitize = webAddress ?? rawAddress;
+    String sanitized = addressToSanitize.replaceAll(RegExp(r'[^\x00-\x7F]'), '');
+    
+    // Clean up multiple spaces, consecutive commas, leading/trailing commas
+    sanitized = sanitized
+        .replaceAll(RegExp(r',\s*,'), ',')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (sanitized.startsWith(',')) sanitized = sanitized.substring(1).trim();
+    if (sanitized.endsWith(',')) sanitized = sanitized.substring(0, sanitized.length - 1).trim();
+
+    // If the sanitized string contains no letters or numbers, use coordinates
+    if (sanitized.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').isEmpty) {
+      return "${lat.toStringAsFixed(5)}, ${long.toStringAsFixed(5)}";
+    }
+
+    return sanitized.length > 255 ? sanitized.substring(0, 255) : sanitized;
+  }
+
   static Future<void> _performLocationLog(ServiceInstance service) async {
     try {
       // 1. Double check authorization token
@@ -94,17 +143,17 @@ class LocationTrackingService {
       );
 
       // 3. Reverse Geocode Coordinates to Address
-      String address = "Unknown Location";
+      String address = "${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}";
       try {
         await setLocaleIdentifier("en_US");
         List<Placemark> placemarks = await placemarkFromCoordinates(
           position.latitude,
           position.longitude,
-        );
+        ).timeout(const Duration(seconds: 10));
         if (placemarks.isNotEmpty) {
           Placemark place = placemarks[0];
           String rawAddress = "${place.street}, ${place.locality}, ${place.postalCode}, ${place.country}";
-          address = rawAddress.length > 255 ? rawAddress.substring(0, 255) : rawAddress;
+          address = await _getCleanEnglishAddress(position.latitude, position.longitude, rawAddress);
         }
       } catch (geocodingError) {
         debugPrint("[Background Location] Geocoding failed: $geocodingError");

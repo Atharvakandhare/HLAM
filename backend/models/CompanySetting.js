@@ -12,7 +12,7 @@ const CompanySetting = sequelize.define(
     companyId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      unique: true,
+      unique: 'company_id',
       field: 'company_id',
     },
     checkInTime: {
