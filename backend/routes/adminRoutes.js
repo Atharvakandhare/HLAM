@@ -8,6 +8,8 @@ const {
   exportReport,
   listCompanies,
   createCompany,
+  approveCompany,
+  rejectCompany,
   listTeams,
   createTeam,
   updateTeam,
@@ -17,6 +19,10 @@ const {
   addTeamMember,
   downloadUserTemplate,
   bulkUploadUsers,
+  createShift,
+  updateShift,
+  deleteShift,
+  assignShift,
 } = require('../controllers/adminController');
 const { authMiddleware, systemAdminOnly, companyAdminOnly, approverOnly } = require('../middleware/auth');
 
@@ -51,12 +57,20 @@ router.use(authMiddleware);
 // Companies (System Admin only)
 router.get('/companies', systemAdminOnly, listCompanies);
 router.post('/companies', systemAdminOnly, createCompany);
+router.post('/companies/:id/approve', systemAdminOnly, approveCompany);
+router.post('/companies/:id/reject', systemAdminOnly, rejectCompany);
 
 // Company Settings (System Admin or Company Admin)
 router.get('/company-settings', companyAdminOnly, getCompanySettings);
 router.post('/company-settings', companyAdminOnly, updateCompanySettings);
 router.put('/company-settings', companyAdminOnly, updateCompanySettings);
 router.post('/company-settings/leave-policy', companyAdminOnly, updateCompanySettings);
+
+// Shift Management (Company Admin only - POST only as requested)
+router.post('/shifts/create', companyAdminOnly, createShift);
+router.post('/shifts/update', companyAdminOnly, updateShift);
+router.post('/shifts/delete', companyAdminOnly, deleteShift);
+router.post('/shifts/assign', companyAdminOnly, assignShift);
 
 // Teams
 router.get('/teams', listTeams); // Available to all authenticated users to list teams of their company

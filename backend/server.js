@@ -22,6 +22,18 @@ const app = require('./app');
 const { dbConnection, sequelize } = require('./config/dbconnect');
 const { User, Company, CompanySetting } = require('./associations'); // sets up model relationships
 const bcrypt = require('bcryptjs');
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin SDK
+try {
+    const serviceAccount = require('./config/firebase-service-account.json');
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+    console.log('✅ Firebase Admin SDK initialized successfully.');
+} catch (error) {
+    console.error('❌ Failed to initialize Firebase Admin SDK:', error.message);
+}
 
 const PORT = process.env.PORT || 8000;
 const HOST = process.env.HOST || '0.0.0.0'; // Bind to all interfaces for deployment
@@ -30,8 +42,13 @@ const seedAdmin = async () => {
     try {
         // 1. Create default Company
         const [defaultCompany] = await Company.findOrCreate({
-            where: { name: 'Hirelyft India Pvt. Ltd.' }
+            where: { name: 'Hirelyft India Pvt. Ltd.' },
+            defaults: { status: 'approved', isActive: true }
         });
+        if (defaultCompany.status !== 'approved') {
+            defaultCompany.status = 'approved';
+            await defaultCompany.save();
+        }
 
         // 2. Create default CompanySetting
         await CompanySetting.findOrCreate({
@@ -257,7 +274,7 @@ const startServer = async () => {
             try {
                 const [results] = await sequelize.query("SHOW INDEX FROM users;");
                 const indexNamesToDrop = [];
-                const seenColumns = {};
+                const indexesByColumn = {};
 
                 for (const row of results) {
                     const keyName = row.Key_name;
@@ -265,13 +282,32 @@ const startServer = async () => {
 
                     if (keyName === 'PRIMARY') continue;
 
-                    // If we have seen an index for this column already, drop this duplicate key!
-                    if (seenColumns[columnName]) {
-                        if (!indexNamesToDrop.includes(keyName)) {
-                            indexNamesToDrop.push(keyName);
+                    if (!indexesByColumn[columnName]) {
+                        indexesByColumn[columnName] = [];
+                    }
+                    if (!indexesByColumn[columnName].includes(keyName)) {
+                        indexesByColumn[columnName].push(keyName);
+                    }
+                }
+
+                // Group by column and keep the cleanest index name (the one without trailing _number)
+                for (const columnName in indexesByColumn) {
+                    const keyNames = indexesByColumn[columnName];
+                    if (keyNames.length > 1) {
+                        keyNames.sort((a, b) => {
+                            const aIsSuffix = /_\d+$/.test(a);
+                            const bIsSuffix = /_\d+$/.test(b);
+                            if (aIsSuffix && !bIsSuffix) return 1;
+                            if (!aIsSuffix && bIsSuffix) return -1;
+                            return a.localeCompare(b);
+                        });
+
+                        // Keep keyNames[0], add others to drop list
+                        for (let i = 1; i < keyNames.length; i++) {
+                            if (!indexNamesToDrop.includes(keyNames[i])) {
+                                indexNamesToDrop.push(keyNames[i]);
+                            }
                         }
-                    } else {
-                        seenColumns[columnName] = keyName;
                     }
                 }
 
@@ -301,6 +337,10 @@ const startServer = async () => {
     // Seed default admin
     await seedAdmin();
 
+    // Start background scheduler
+    const { startScheduler } = require('./services/scheduler');
+    startScheduler();
+
     // Start Server
     app.listen(PORT, HOST, () => {
         console.log(`Server is running on ${HOST}:${PORT}`);
@@ -308,3 +348,4 @@ const startServer = async () => {
 };
 
 startServer();
+

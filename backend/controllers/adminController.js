@@ -1,4 +1,4 @@
-const { User, Attendance, Company, Team, CompanySetting } = require('../associations');
+const { User, Attendance, Company, Team, CompanySetting, Shift } = require('../associations');
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const { sendWelcomeEmail, sendCompanyAdminWelcomeEmail } = require('../services/mailService');
@@ -785,6 +785,88 @@ const createCompany = async (req, res) => {
   }
 };
 
+const approveCompany = async (req, res) => {
+  try {
+    if (req.user.role !== 'system_admin') {
+      return res.status(403).json({ message: 'Only System Admins can approve companies.' });
+    }
+    const { id } = req.params;
+    const company = await Company.findByPk(id);
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found.' });
+    }
+
+    company.status = 'approved';
+    company.isActive = true;
+    await company.save();
+
+    // Find company admin
+    const adminUser = await User.findOne({
+      where: { companyId: company.id, role: 'company_admin' }
+    });
+
+    if (adminUser) {
+      const { sendCompanyApprovalEmail } = require('../services/mailService');
+      await sendCompanyApprovalEmail({
+        adminName: adminUser.name,
+        adminEmail: adminUser.email,
+        companyName: company.name,
+        createdDate: company.createdAt,
+      });
+    }
+
+    return res.json({ message: 'Company approved successfully.' });
+  } catch (error) {
+    console.error('[Admin] Approve company error:', error);
+    return res.status(500).json({ message: 'Failed to approve company.', error: error.message });
+  }
+};
+
+const rejectCompany = async (req, res) => {
+  try {
+    if (req.user.role !== 'system_admin') {
+      return res.status(403).json({ message: 'Only System Admins can reject companies.' });
+    }
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({ message: 'Rejection reason is required.' });
+    }
+
+    const company = await Company.findByPk(id);
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found.' });
+    }
+
+    company.status = 'rejected';
+    company.isActive = false;
+    company.rejectionReason = reason;
+    await company.save();
+
+    // Find company admin
+    const adminUser = await User.findOne({
+      where: { companyId: company.id, role: 'company_admin' }
+    });
+
+    if (adminUser) {
+      const { sendCompanyRejectionEmail } = require('../services/mailService');
+      await sendCompanyRejectionEmail({
+        adminName: adminUser.name,
+        adminEmail: adminUser.email,
+        companyName: company.name,
+        rejectionReason: reason,
+        createdDate: company.createdAt,
+      });
+    }
+
+    return res.json({ message: 'Company rejected successfully.' });
+  } catch (error) {
+    console.error('[Admin] Reject company error:', error);
+    return res.status(500).json({ message: 'Failed to reject company.', error: error.message });
+  }
+};
+
 // Team controllers (Company Admin, System Admin, Manager, TL)
 const listTeams = async (req, res) => {
   try {
@@ -1334,6 +1416,176 @@ const bulkUploadUsers = async (req, res) => {
   }
 };
 
+// --- Shift Controller Actions ---
+
+// Create Shift (Admin only)
+const createShift = async (req, res) => {
+  try {
+    const creatorRole = req.user.role;
+    if (!['system_admin', 'company_admin'].includes(creatorRole)) {
+      return res.status(403).json({ message: 'Only Admins can create shifts.' });
+    }
+
+    const { name, checkInTime, checkOutTime, lateInLimit, lateOutLimit, earlyInLimit, earlyOutLimit } = req.body;
+    if (!name || !checkInTime || !checkOutTime) {
+      return res.status(400).json({ message: 'Name, check-in time, and check-out time are required.' });
+    }
+
+    const targetCompanyId = req.user.companyId;
+    if (!targetCompanyId) {
+      return res.status(400).json({ message: 'Company ID is required.' });
+    }
+
+    const shift = await Shift.create({
+      companyId: targetCompanyId,
+      name,
+      checkInTime,
+      checkOutTime,
+      lateInLimit: lateInLimit !== undefined ? parseInt(lateInLimit) : 15,
+      lateOutLimit: lateOutLimit !== undefined ? parseInt(lateOutLimit) : 15,
+      earlyInLimit: earlyInLimit !== undefined ? parseInt(earlyInLimit) : 15,
+      earlyOutLimit: earlyOutLimit !== undefined ? parseInt(earlyOutLimit) : 15,
+      isActive: true
+    });
+
+    return res.status(201).json({ message: 'Shift created successfully', shift });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to create shift', error: error.message });
+  }
+};
+
+// Update Shift (Admin only)
+const updateShift = async (req, res) => {
+  try {
+    const creatorRole = req.user.role;
+    if (!['system_admin', 'company_admin'].includes(creatorRole)) {
+      return res.status(403).json({ message: 'Only Admins can update shifts.' });
+    }
+
+    const { id, name, checkInTime, checkOutTime, lateInLimit, lateOutLimit, earlyInLimit, earlyOutLimit, isActive } = req.body;
+    if (!id) {
+      return res.status(400).json({ message: 'Shift ID is required.' });
+    }
+
+    const shift = await Shift.findByPk(id);
+    if (!shift) {
+      return res.status(404).json({ message: 'Shift not found.' });
+    }
+
+    if (shift.companyId !== req.user.companyId) {
+      return res.status(403).json({ message: 'Unauthorized to modify this shift.' });
+    }
+
+    if (name !== undefined) shift.name = name;
+    if (checkInTime !== undefined) shift.checkInTime = checkInTime;
+    if (checkOutTime !== undefined) shift.checkOutTime = checkOutTime;
+    if (lateInLimit !== undefined) shift.lateInLimit = parseInt(lateInLimit);
+    if (lateOutLimit !== undefined) shift.lateOutLimit = parseInt(lateOutLimit);
+    if (earlyInLimit !== undefined) shift.earlyInLimit = parseInt(earlyInLimit);
+    if (earlyOutLimit !== undefined) shift.earlyOutLimit = parseInt(earlyOutLimit);
+    if (isActive !== undefined) shift.isActive = isActive === true || isActive === 'true';
+
+    await shift.save();
+
+    return res.json({ message: 'Shift updated successfully', shift });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to update shift', error: error.message });
+  }
+};
+
+// Delete/Deactivate Shift (Admin only)
+const deleteShift = async (req, res) => {
+  try {
+    const creatorRole = req.user.role;
+    if (!['system_admin', 'company_admin'].includes(creatorRole)) {
+      return res.status(403).json({ message: 'Only Admins can delete shifts.' });
+    }
+
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({ message: 'Shift ID is required.' });
+    }
+
+    const shift = await Shift.findByPk(id);
+    if (!shift) {
+      return res.status(404).json({ message: 'Shift not found.' });
+    }
+
+    if (shift.companyId !== req.user.companyId) {
+      return res.status(403).json({ message: 'Unauthorized to modify this shift.' });
+    }
+
+    shift.isActive = false;
+    await shift.save();
+
+    return res.json({ message: 'Shift deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to delete shift', error: error.message });
+  }
+};
+
+// Assign Default Shift to User (Admin only)
+const assignShift = async (req, res) => {
+  try {
+    const creatorRole = req.user.role;
+    if (!['system_admin', 'company_admin'].includes(creatorRole)) {
+      return res.status(403).json({ message: 'Only Admins can assign shifts.' });
+    }
+
+    const { userId, shiftId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required.' });
+    }
+
+    const targetUser = await User.findByPk(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    if (targetUser.companyId !== req.user.companyId) {
+      return res.status(403).json({ message: 'User must belong to your company.' });
+    }
+
+    if (shiftId) {
+      const shift = await Shift.findByPk(shiftId);
+      if (!shift) {
+        return res.status(404).json({ message: 'Shift not found.' });
+      }
+      if (shift.companyId !== req.user.companyId) {
+        return res.status(403).json({ message: 'Shift must belong to your company.' });
+      }
+      targetUser.defaultShiftId = parseInt(shiftId);
+    } else {
+      targetUser.defaultShiftId = null;
+    }
+
+    await targetUser.save();
+
+    return res.json({ message: 'Shift assigned successfully', user: { id: targetUser.id, defaultShiftId: targetUser.defaultShiftId } });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to assign shift', error: error.message });
+  }
+};
+
+// List Shifts (Available to all authenticated users of the same company)
+const listShifts = async (req, res) => {
+  try {
+    const targetCompanyId = req.user.companyId;
+    if (!targetCompanyId) {
+      return res.status(400).json({ message: 'Company ID is required.' });
+    }
+
+    const shifts = await Shift.findAll({
+      where: { companyId: targetCompanyId, isActive: true },
+      order: [['name', 'ASC']]
+    });
+
+    return res.json({ shifts });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to fetch shifts', error: error.message });
+  }
+};
+
 module.exports = {
   listUsers,
   createUser,
@@ -1343,6 +1595,8 @@ module.exports = {
   exportReport,
   listCompanies,
   createCompany,
+  approveCompany,
+  rejectCompany,
   listTeams,
   createTeam,
   updateTeam,
@@ -1352,4 +1606,9 @@ module.exports = {
   addTeamMember,
   downloadUserTemplate,
   bulkUploadUsers,
+  createShift,
+  updateShift,
+  deleteShift,
+  assignShift,
+  listShifts,
 };

@@ -28,8 +28,17 @@ class ApiException implements Exception {
 class ApiService {
   static ApiException? lastApiException;
 
-  // Live API production server
-  static const String baseUrl = 'https://intime.hirelyft.in/api';
+  // Localhost API server (auto-detects Android Emulator vs iOS Simulator/Web/Desktop)
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:8000/api';
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // 10.0.2.2 is the special IP address mapped to the localhost of the host machine by the Android Emulator
+      return 'http://10.0.2.2:8000/api';
+    }
+    return 'http://localhost:8000/api'; // iOS Simulator / Desktop
+  }
 
 
   final _storage = const FlutterSecureStorage(
@@ -784,6 +793,34 @@ class ApiService {
     return response;
   }
 
+  /// Public company self-registration
+  Future<Map<String, dynamic>> registerCompany({
+    required String companyName,
+    required String adminName,
+    required String adminEmail,
+    required String adminPassword,
+  }) async {
+    final response = await post('/auth/register-company', {
+      'companyName': companyName,
+      'adminName': adminName,
+      'adminEmail': adminEmail,
+      'adminPassword': adminPassword,
+    });
+    return Map<String, dynamic>.from(response);
+  }
+
+  /// Approve a company (System Admin only)
+  Future<void> approveCompany(int companyId) async {
+    await post('/admin/companies/$companyId/approve', {});
+  }
+
+  /// Reject a company (System Admin only)
+  Future<void> rejectCompany(int companyId, String reason) async {
+    await post('/admin/companies/$companyId/reject', {
+      'reason': reason,
+    });
+  }
+
   /// Log user coordinates to the location trail
   Future<Map<String, dynamic>> logLocation({
     required double latitude,
@@ -884,5 +921,43 @@ class ApiService {
       );
     }
   }
+
+  // Shift Management APIs
+  Future<List<dynamic>> listShifts() async {
+    final response = await post('/shifts/list', {});
+    return response['shifts'] as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createShift(Map<String, dynamic> shiftData) async {
+    return await post('/admin/shifts/create', shiftData);
+  }
+
+  Future<Map<String, dynamic>> updateShift(Map<String, dynamic> shiftData) async {
+    return await post('/admin/shifts/update', shiftData);
+  }
+
+  Future<Map<String, dynamic>> deleteShift(int shiftId) async {
+    return await post('/admin/shifts/delete', {'id': shiftId});
+  }
+
+  Future<Map<String, dynamic>> assignShift(int userId, int? shiftId) async {
+    return await post('/admin/shifts/assign', {
+      'userId': userId,
+      'shiftId': shiftId,
+    });
+  }
+
+  Future<Map<String, dynamic>> updateOvertimePermission(int userId, String date, bool overtimeAllowed) async {
+    return await post('/attendance/overtime', {
+      'userId': userId,
+      'date': date,
+      'overtimeAllowed': overtimeAllowed,
+    });
+  }
+
+  Future<Map<String, dynamic>> updateFcmToken(String token) async {
+    return await post('/auth/fcm-token', {'fcmToken': token});
+  }
 }
+
 

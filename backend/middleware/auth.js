@@ -16,6 +16,21 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found or inactive' });
     }
 
+    if (user.companyId) {
+      const { Company } = require('../associations');
+      const company = await Company.findByPk(user.companyId);
+      if (company) {
+        if (company.status === 'pending') {
+          return res.status(403).json({ message: 'Your company registration is pending approval by the System Admin.' });
+        }
+        if (company.status === 'rejected') {
+          return res.status(403).json({
+            message: `Your company registration was rejected. Reason: ${company.rejectionReason || 'No reason specified'}. Please register again.`
+          });
+        }
+      }
+    }
+
     req.user = user;
     next();
   } catch (error) {

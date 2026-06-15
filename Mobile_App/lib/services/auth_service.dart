@@ -43,6 +43,20 @@ class AuthService {
     });
   }
 
+  Future<void> registerCompany({
+    required String companyName,
+    required String adminName,
+    required String adminEmail,
+    required String adminPassword,
+  }) async {
+    await _api.registerCompany(
+      companyName: companyName,
+      adminName: adminName,
+      adminEmail: adminEmail,
+      adminPassword: adminPassword,
+    );
+  }
+
   Future<User?> getUser() async {
     try {
       final token = await _api.getToken();
@@ -64,5 +78,24 @@ class AuthService {
       // Ignore
     }
     await _api.deleteToken();
+  }
+
+  Future<void> forgotPassword(String email) async {
+    await _api.post('/auth/forgot-password', {'email': email});
+  }
+
+  Future<String> verifyOtp(String email, String otp) async {
+    final response = await _api.post('/auth/verify-otp', {
+      'email': email,
+      'otp': otp,
+    });
+    return response['resetToken'];
+  }
+
+  Future<void> resetPassword(String resetToken, String newPassword) async {
+    await _api.post('/auth/reset-password', {
+      'resetToken': resetToken,
+      'newPassword': newPassword,
+    });
   }
 }

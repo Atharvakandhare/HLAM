@@ -12,12 +12,21 @@ const Company = sequelize.define(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
+      unique: 'company_name',
     },
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
       field: 'is_active',
+    },
+    status: {
+      type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+      defaultValue: 'pending',
+    },
+    rejectionReason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'rejection_reason',
     },
   },
   {

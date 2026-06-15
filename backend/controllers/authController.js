@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User, Company, Team, CompanySetting } = require('../associations');
+const { sendOtpEmail } = require('../services/mailService');
 
 const generateToken = (userId) =>
   jwt.sign({ id: userId }, process.env.JWT_SECRET || 'dev-secret', {
@@ -141,6 +142,89 @@ const register = async (req, res) => {
   }
 };
 
+// Register new company and its admin user (public POST)
+const registerCompany = async (req, res) => {
+  try {
+    const { companyName, adminName, adminEmail, adminPassword } = req.body;
+
+    if (!companyName || !adminName || !adminEmail || !adminPassword) {
+      return res.status(400).json({ message: 'Company name, admin name, email, and password are required.' });
+    }
+
+    // 1. Check if user email exists
+    let existingUser = await User.findOne({ where: { email: adminEmail } });
+    if (existingUser) {
+      // Check if user is associated with a company
+      if (existingUser.companyId) {
+        const userCompany = await Company.findByPk(existingUser.companyId);
+        if (userCompany && userCompany.status === 'rejected') {
+          // Clean up the rejected company and its users
+          await User.destroy({ where: { companyId: userCompany.id } });
+          await CompanySetting.destroy({ where: { companyId: userCompany.id } });
+          await Company.destroy({ where: { id: userCompany.id } });
+          existingUser = null;
+        } else {
+          return res.status(409).json({ message: 'Email address already registered.' });
+        }
+      } else {
+        return res.status(409).json({ message: 'Email address already registered as an individual employee.' });
+      }
+    }
+
+    // 2. Check if company name exists
+    let existingCompany = await Company.findOne({ where: { name: companyName } });
+    if (existingCompany) {
+      if (existingCompany.status === 'rejected') {
+        // Clean up the rejected company and its users
+        await User.destroy({ where: { companyId: existingCompany.id } });
+        await CompanySetting.destroy({ where: { companyId: existingCompany.id } });
+        await Company.destroy({ where: { id: existingCompany.id } });
+        existingCompany = null;
+      } else {
+        return res.status(409).json({ message: 'Company name already registered.' });
+      }
+    }
+
+    // 3. Create the Company with pending status and isActive: false
+    const company = await Company.create({
+      name: companyName,
+      status: 'pending',
+      isActive: false
+    });
+
+    // 4. Initialize company settings
+    await CompanySetting.create({
+      companyId: company.id,
+      checkInTime: '09:00:00',
+      checkOutTime: '18:00:00',
+      latitude: 0.0,
+      longitude: 0.0,
+      address: null,
+      radius: 100.0
+    });
+
+    // 5. Create company admin user
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+    const adminUser = await User.create({
+      name: adminName,
+      email: adminEmail,
+      password: hashedPassword,
+      role: 'company_admin',
+      isActive: true, // User is active, but blocked by company pending status
+      companyId: company.id
+    });
+
+    return res.status(201).json({
+      message: 'Company registration request submitted successfully. Waiting for System Admin approval.',
+      company,
+      adminUser
+    });
+  } catch (error) {
+    console.error('[Auth] Register company error:', error);
+    return res.status(500).json({ message: 'Company registration failed', error: error.message });
+  }
+};
+
 // Login user (supports email or employeeId)
 const login = async (req, res) => {
   try {
@@ -169,6 +253,20 @@ const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    if (user.companyId) {
+      const company = await Company.findByPk(user.companyId);
+      if (company) {
+        if (company.status === 'pending') {
+          return res.status(403).json({ message: 'Your company registration is pending approval by the System Admin.' });
+        }
+        if (company.status === 'rejected') {
+          return res.status(403).json({
+            message: `Your company registration was rejected. Reason: ${company.rejectionReason || 'No reason specified'}. Please register again.`
+          });
+        }
+      }
     }
 
     const token = generateToken(user.id);
@@ -294,8 +392,128 @@ const deleteProfilePicture = async (req, res) => {
   }
 };
 
+// Request OTP (Forgot Password)
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email address is required' });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ message: 'Email address not registered' });
+    }
+
+    // Generate 4-digit OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    user.otpCode = otp;
+    user.otpExpiresAt = expiry;
+    await user.save();
+
+    // Send email
+    const emailSent = await sendOtpEmail({ email: user.email, name: user.name, otp });
+    if (!emailSent.success) {
+      return res.status(500).json({ message: 'Failed to send verification email' });
+    }
+
+    return res.json({ message: 'Verification code sent to your registered email address' });
+  } catch (error) {
+    console.error('[Auth] Forgot password error:', error);
+    return res.status(500).json({ message: 'Forgot password request failed', error: error.message });
+  }
+};
+
+// Verify OTP
+const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and verification code are required' });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check OTP code and expiration
+    if (String(user.otpCode) !== String(otp) || !user.otpExpiresAt || new Date(user.otpExpiresAt) < new Date()) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    // Generate a temporary reset token valid for 15 minutes
+    const resetToken = jwt.sign(
+      { id: user.id, purpose: 'reset-password' },
+      process.env.JWT_SECRET || 'dev-secret',
+      { expiresIn: '15m' }
+    );
+
+    return res.json({
+      message: 'Email verified successfully',
+      resetToken,
+    });
+  } catch (error) {
+    console.error('[Auth] Verify OTP error:', error);
+    return res.status(500).json({ message: 'Verification failed', error: error.message });
+  }
+};
+
+// Reset Password
+const resetPassword = async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ message: 'Reset token and new password are required' });
+    }
+
+    // Verify resetToken
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET || 'dev-secret');
+      if (decoded.purpose !== 'reset-password') {
+        throw new Error('Invalid token purpose');
+      }
+    } catch (err) {
+      return res.status(401).json({ message: 'Invalid or expired reset token' });
+    }
+
+    const user = await User.findByPk(decoded.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Hash and save new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    user.otpCode = null;
+    user.otpExpiresAt = null;
+    await user.save();
+
+    return res.json({ message: 'Password reset completed successfully' });
+  } catch (error) {
+    console.error('[Auth] Reset password error:', error);
+    return res.status(500).json({ message: 'Password reset failed', error: error.message });
+  }
+};
+
+const updateFcmToken = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { fcmToken } = req.body;
+    await User.update({ fcmToken: fcmToken || null }, { where: { id: userId } });
+    return res.json({ message: 'FCM token updated successfully' });
+  } catch (error) {
+    console.error('[Auth] Update FCM token error:', error);
+    return res.status(500).json({ message: 'Failed to update FCM token', error: error.message });
+  }
+};
+
 module.exports = {
   register,
+  registerCompany,
   login,
   me,
   logout,
@@ -303,5 +521,9 @@ module.exports = {
   changePassword,
   updateProfilePicture,
   deleteProfilePicture,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
+  updateFcmToken,
 };
 

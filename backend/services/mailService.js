@@ -620,8 +620,320 @@ const sendLeaveStatusEmail = async ({
     }
 };
 
+// ─────────────────────────────────────────────────────────────────
+// 4. OTP VERIFICATION EMAIL
+//    Sent when any user requests a password reset OTP.
+// ─────────────────────────────────────────────────────────────────
+const sendOtpEmail = async ({ email, name, otp }) => {
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Reset OTP</title>
+    </head>
+    <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f8fafc;color:#1e293b;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:550px;margin:30px auto;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px -5px rgba(0,0,0,0.05),0 8px 10px -6px rgba(0,0,0,0.05);border:1px solid #e2e8f0;">
+            
+            <!-- Header Banner -->
+            <tr>
+                <td style="background:linear-gradient(135deg,#2563eb 0%,#1e3a8a 120%);padding:36px 30px;text-align:center;">
+                    <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Security Verification 🔒</h1>
+                    <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;font-weight:500;">HLAM – Attendance &amp; Employee Management</p>
+                </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+                <td style="padding:30px 30px 20px;">
+                    <p style="font-size:16px;font-weight:700;color:#0f172a;margin:0;">Hi ${name},</p>
+                    <p style="font-size:14px;color:#475569;line-height:1.6;margin:12px 0 24px;">
+                        A request has been made to reset the password for your HLAM account. Please use the following One-Time Password (OTP) to complete your verification:
+                    </p>
+                    
+                    <!-- OTP Code Container -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;border-radius:12px;border:1px solid #e2e8f0;">
+                        <tr>
+                            <td style="padding:24px;text-align:center;">
+                                <span style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1.5px;">Verification Code</span>
+                                <h2 style="margin:8px 0 0;color:#2563eb;font-size:36px;font-weight:900;letter-spacing:6px;font-family:monospace;">${otp}</h2>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p style="font-size:13px;color:#ef4444;line-height:1.6;margin:24px 0 0;font-weight:600;">
+                        ⏳ This OTP is valid for 10 minutes only. Do not share this code with anyone.
+                    </p>
+                </td>
+            </tr>
+
+            <!-- Security Alert -->
+            <tr>
+                <td style="padding:0 30px 24px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #f1f5f9;padding-top:18px;">
+                        <tr>
+                            <td>
+                                <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;">
+                                    If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td style="background-color:#f8fafc;padding:20px 30px;text-align:center;border-top:1px solid #e2e8f0;">
+                    <p style="margin:0;font-size:11px;color:#94a3b8;font-weight:500;">HLAM – Hirelyft Attendance Management.</p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    `;
+
+    const mailOptions = {
+        from: '"HLAM – Hirelyft Attendance Management" <atharva.kandhare@hirelyft.in>',
+        to: email,
+        subject: 'Reset Password Verification Code – HLAM',
+        html: htmlContent,
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[Mail Service] OTP email successfully sent to ${email}. MessageId: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error(`[Mail Service] Failed to send OTP email to ${email}:`, error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+const sendCompanyApprovalEmail = async ({ adminName, adminEmail, companyName, createdDate }) => {
+    const displayDate = createdDate ? new Date(createdDate).toLocaleDateString() : new Date().toLocaleDateString();
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Company Approved – HLAM</title>
+    </head>
+    <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f4ff;color:#1e293b;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;margin:24px auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 12px 32px -4px rgba(30,58,138,0.12);border:1px solid #c7d2fe;">
+
+            <!-- Header -->
+            <tr>
+                <td style="background:linear-gradient(135deg,#1e3a8a 0%,#10b981 60%,#059669 100%);padding:44px 32px;text-align:center;">
+                    <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#a7f3d0;text-transform:uppercase;letter-spacing:1.5px;">HLAM – Hirelyft Attendance Management</p>
+                    <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:900;letter-spacing:-0.5px;">🏢 Company Registration Approved!</h1>
+                    <p style="color:#a7f3d0;margin:10px 0 0;font-size:14px;font-weight:500;">Company Has Been Successfully Registered on HLAM</p>
+                </td>
+            </tr>
+
+            <!-- Greeting -->
+            <tr>
+                <td style="padding:30px 32px 20px;">
+                    <p style="font-size:17px;font-weight:700;color:#0f172a;margin:0;">Hi ${adminName},</p>
+                    <p style="font-size:14px;color:#475569;line-height:1.7;margin:12px 0 0;">
+                        We are pleased to inform you that your company registration request has been reviewed and approved by the system administrator.
+                        Your company account is now fully active, and you can begin managing your teams, employees, holidays, and settings.
+                    </p>
+                </td>
+            </tr>
+
+            <!-- Registration Details -->
+            <tr>
+                <td style="padding:0 32px 30px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;border-radius:14px;border:1px solid #e2e8f0;">
+                        <tr>
+                            <td style="padding:22px;">
+                                <h3 style="margin:0 0 16px;color:#1e3a8a;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">📋 Registration Details</h3>
+                                <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
+                                    <tr>
+                                        <td style="padding:7px 0;color:#64748b;font-weight:600;width:160px;">Company Name:</td>
+                                        <td style="padding:7px 0;color:#0f172a;font-weight:700;">${companyName}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:7px 0;color:#64748b;font-weight:600;">Admin Full Name:</td>
+                                        <td style="padding:7px 0;color:#0f172a;font-weight:700;">${adminName}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:7px 0;color:#64748b;font-weight:600;">Admin Email:</td>
+                                        <td style="padding:7px 0;color:#0f172a;font-weight:700;">${adminEmail}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:7px 0;color:#64748b;font-weight:600;">Registration Date:</td>
+                                        <td style="padding:7px 0;color:#0f172a;font-weight:700;">${displayDate}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Action -->
+            <tr>
+                <td style="padding:0 32px 30px;text-align:center;">
+                    <p style="font-size:14px;color:#475569;margin:0 0 16px;">You can now log in to the HLAM mobile application using your registered email and password.</p>
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td style="background:#f8fafc;padding:24px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+                    <p style="margin:0 0 4px;font-size:11px;color:#94a3b8;font-weight:600;">HLAM – Hirelyft Attendance Management Portal</p>
+                    <p style="margin:0;font-size:11px;color:#94a3b8;">This is an automated notification. Please do not reply directly to this email.</p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    `;
+
+    const mailOptions = {
+        from: '"HLAM – Hirelyft Attendance Management" <atharva.kandhare@hirelyft.in>',
+        to: adminEmail,
+        subject: `Company Has Been Successfully Registered on HLAM`,
+        html: htmlContent,
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[Mail Service] Company approval email sent to ${adminEmail}. MessageId: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error(`[Mail Service] Failed to send company approval email to ${adminEmail}:`, error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+const sendCompanyRejectionEmail = async ({ adminName, adminEmail, companyName, rejectionReason, createdDate }) => {
+    const displayDate = createdDate ? new Date(createdDate).toLocaleDateString() : new Date().toLocaleDateString();
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Company Registration Rejected – HLAM</title>
+    </head>
+    <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#fcfcfc;color:#1e293b;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;margin:24px auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 12px 32px -4px rgba(0,0,0,0.1);border:1px solid #fecdd3;">
+
+            <!-- Header -->
+            <tr>
+                <td style="background:linear-gradient(135deg,#e11d48 0%,#be123c 60%,#9f1239 100%);padding:44px 32px;text-align:center;">
+                    <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#fecdd3;text-transform:uppercase;letter-spacing:1.5px;">HLAM – Hirelyft Attendance Management</p>
+                    <h1 style="color:#ffffff;margin:0;font-size:25px;font-weight:900;letter-spacing:-0.5px;">❌ Registration Request Rejected</h1>
+                    <p style="color:#fecdd3;margin:10px 0 0;font-size:14px;font-weight:500;">Unfortunately, we are unable to register your company</p>
+                </td>
+            </tr>
+
+            <!-- Greeting -->
+            <tr>
+                <td style="padding:30px 32px 20px;">
+                    <p style="font-size:17px;font-weight:700;color:#0f172a;margin:0;">Hi ${adminName},</p>
+                    <p style="font-size:14px;color:#475569;line-height:1.7;margin:12px 0 0;">
+                        Unfortunately, we are unable to register your company <strong style="color:#be123c;">${companyName}</strong> on the HLAM portal at this time.
+                        Below is the reason specified by the administrator:
+                    </p>
+                </td>
+            </tr>
+
+            <!-- Rejection Reason -->
+            <tr>
+                <td style="padding:0 32px 20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff5f5;border-radius:12px;border:1px solid #fee2e2;">
+                        <tr>
+                            <td style="padding:18px 22px;">
+                                <p style="margin:0 0 4px;font-size:11px;color:#e11d48;font-weight:800;text-transform:uppercase;">Reason for Rejection:</p>
+                                <p style="margin:0;font-size:14px;color:#9f1239;font-weight:600;line-height:1.5;">"${rejectionReason}"</p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Registration Details -->
+            <tr>
+                <td style="padding:0 32px 30px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;border-radius:14px;border:1px solid #e2e8f0;">
+                        <tr>
+                            <td style="padding:22px;">
+                                <h3 style="margin:0 0 16px;color:#1e3a8a;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">📋 Registration Details Submitted</h3>
+                                <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
+                                    <tr>
+                                        <td style="padding:7px 0;color:#64748b;font-weight:600;width:160px;">Company Name:</td>
+                                        <td style="padding:7px 0;color:#0f172a;font-weight:700;">${companyName}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:7px 0;color:#64748b;font-weight:600;">Admin Full Name:</td>
+                                        <td style="padding:7px 0;color:#0f172a;font-weight:700;">${adminName}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:7px 0;color:#64748b;font-weight:600;">Admin Email:</td>
+                                        <td style="padding:7px 0;color:#0f172a;font-weight:700;">${adminEmail}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:7px 0;color:#64748b;font-weight:600;">Submission Date:</td>
+                                        <td style="padding:7px 0;color:#0f172a;font-weight:700;">${displayDate}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Action -->
+            <tr>
+                <td style="padding:0 32px 30px;text-align:center;">
+                    <p style="font-size:14px;color:#475569;margin:0;">
+                        If you wish to register again with corrected details, you may do so through the <strong>Register New Company</strong> form on the login screen.
+                    </p>
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td style="background:#f8fafc;padding:24px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+                    <p style="margin:0 0 4px;font-size:11px;color:#94a3b8;font-weight:600;">HLAM – Hirelyft Attendance Management Portal</p>
+                    <p style="margin:0;font-size:11px;color:#94a3b8;">This is an automated notification. Please do not reply directly to this email.</p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    `;
+
+    const mailOptions = {
+        from: '"HLAM – Hirelyft Attendance Management" <atharva.kandhare@hirelyft.in>',
+        to: adminEmail,
+        subject: `Unfortunately, we are unable to register your company`,
+        html: htmlContent,
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[Mail Service] Company rejection email sent to ${adminEmail}. MessageId: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error(`[Mail Service] Failed to send company rejection email to ${adminEmail}:`, error.message);
+        return { success: false, error: error.message };
+    }
+};
+
 module.exports = {
     sendCompanyAdminWelcomeEmail,
     sendWelcomeEmail,
     sendLeaveStatusEmail,
+    sendOtpEmail,
+    sendCompanyApprovalEmail,
+    sendCompanyRejectionEmail,
 };

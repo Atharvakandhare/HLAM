@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'providers/app_provider.dart';
 import 'screens/login_screen.dart';
@@ -13,7 +15,10 @@ import 'screens/add_employee_screen.dart';
 import 'screens/main_navigation_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/register_company_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/company_registrations_screen.dart';
 import 'services/location_service.dart';
+import 'services/reminder_alarm_service.dart';
 
 /// Checks the Play Store for a new version and triggers a flexible in-app update.
 /// Silently skips if running outside of a Play Store environment (debug/emulator).
@@ -37,8 +42,66 @@ Future<void> _checkForUpdate() async {
   }
 }
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("FCM background message received: ${message.messageId}");
+}
+
+Future<void> _initFcm() async {
+  if (kIsWeb) return;
+
+  try {
+    final messaging = FirebaseMessaging.instance;
+    
+    // Request notification permissions
+    final settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    debugPrint('User granted push notification permission: ${settings.authorizationStatus}');
+
+    // Initialize local notifications service so we can display foreground alerts with sound
+    await ReminderAlarmService.init();
+
+    // Set foreground notification options for iOS
+    await messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    // Foreground listener
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint('FCM message received in foreground: ${message.messageId}');
+      if (message.notification != null) {
+        final title = message.notification?.title ?? 'Attendance Reminder';
+        final body = message.notification?.body ?? 'Please check-in or check-out.';
+        ReminderAlarmService.triggerImmediateAlarm(title, body);
+      }
+    });
+
+    // Background/terminated click listener
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint('FCM notification clicked and opened the app: ${message.messageId}');
+    });
+  } catch (e) {
+    debugPrint('Error initializing FCM messaging: $e');
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await _initFcm();
+  } catch (e) {
+    debugPrint("Failed to initialize Firebase: $e");
+  }
+
   _checkForUpdate(); // fire-and-forget; don't await so startup isn't blocked
   await LocationTrackingService.initializeService();
   runApp(const MyApp());
@@ -145,6 +208,8 @@ class MyApp extends StatelessWidget {
           '/add_employee': (context) => const AddEmployeeScreen(),
           '/employees': (context) => const EmployeeListScreen(),
           '/register_company': (context) => const RegisterCompanyScreen(),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/company_registrations': (context) => const CompanyRegistrationsScreen(),
         },
       ),
     );

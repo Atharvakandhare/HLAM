@@ -8,6 +8,7 @@ import 'dart:math';
 import '../providers/app_provider.dart';
 import '../models/user.dart';
 import '../models/attendance.dart';
+import '../models/shift.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/reminder_alarm_service.dart';
@@ -1479,6 +1480,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
           },
         ),
+        const SizedBox(height: 16),
+        _buildFullWidthAdminActionCard(
+          'Company Registrations',
+          'Manage, approve, or reject company self-registration requests',
+          Icons.domain_verification_rounded,
+          const Color(0xFF10B981),
+          () {
+            Navigator.pushNamed(context, '/company_registrations');
+          },
+        ),
       ],
 
       const SizedBox(height: 28),
@@ -1714,6 +1725,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _showMoodEnergyPicker(BuildContext context) {
     String? selectedMood;
     String? selectedEnergy;
+    int? selectedShiftId;
 
     final moods = [
       {'key': 'happy', 'emoji': '😊', 'label': 'Happy'},
@@ -1728,250 +1740,381 @@ class _DashboardScreenState extends State<DashboardScreen> {
       {'key': 'high', 'emoji': '🔋🔋🔋', 'label': 'High'},
     ];
 
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final isFirstCheckIn = provider.todayAttendance == null;
+    if (isFirstCheckIn) {
+      provider.fetchShifts();
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 8,
-            top: 0,
-            left: 24,
-            right: 24,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 12),
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'How are you feeling today? 🌟',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Select your mood and energy level before checking in (both required)',
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    const Text(
-                      'Mood',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF64748B),
-                        letterSpacing: 0.8,
+        builder: (ctx, setSheetState) {
+          final provider = Provider.of<AppProvider>(ctx);
+          
+          if (isFirstCheckIn && selectedShiftId == null) {
+            if (_user?.defaultShiftId != null &&
+                provider.shifts.any((s) => s.id == _user?.defaultShiftId)) {
+              selectedShiftId = _user?.defaultShiftId;
+            } else {
+              selectedShiftId = 0;
+            }
+          }
+
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 8,
+              top: 0,
+              left: 24,
+              right: 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      '*',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red,
-                      ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'How are you feeling today? 🌟',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF0F172A),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: moods.map((m) {
-                    final isSelected = selectedMood == m['key'];
-                    return GestureDetector(
-                      onTap: () => setSheetState(() => selectedMood = m['key']),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 74,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF4F46E5).withValues(alpha: 0.1)
-                              : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isSelected
-                                ? const Color(0xFF4F46E5)
-                                : Colors.grey.shade200,
-                            width: isSelected ? 2 : 1,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isFirstCheckIn 
+                      ? 'Select your shift, mood, and energy level before checking in.'
+                      : 'Select your mood and energy level before checking in (both required)',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                  
+                  if (isFirstCheckIn) ...[
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        const Text(
+                          'Select Today\'s Shift',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.8,
                           ),
                         ),
-                        child: Column(
+                        const SizedBox(width: 4),
+                        const Text(
+                          '*',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (provider.isLoading && provider.shifts.isEmpty)
+                      const Center(child: Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: CircularProgressIndicator(),
+                      ))
+                    else if (provider.shifts.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.amber.shade200),
+                        ),
+                        child: Row(
                           children: [
-                            Text(
-                              m['emoji']!,
-                              style: const TextStyle(fontSize: 28),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              m['label']!,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: isSelected
-                                    ? const Color(0xFF4F46E5)
-                                    : Colors.grey.shade600,
+                            Icon(Icons.warning_amber_rounded, color: Colors.amber.shade800),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'No active shifts configured. Default company office hours will apply.',
+                                style: TextStyle(fontSize: 13, color: Colors.amber.shade900, fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    const Text(
-                      'Energy Level',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF64748B),
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      '*',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: energies.map((e) {
-                    final isSelected = selectedEnergy == e['key'];
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: GestureDetector(
-                          onTap: () =>
-                              setSheetState(() => selectedEnergy = e['key']),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(
-                                      0xFF10B981,
-                                    ).withValues(alpha: 0.1)
-                                  : Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isSelected
-                                    ? const Color(0xFF10B981)
-                                    : Colors.grey.shade200,
-                                width: isSelected ? 2 : 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  e['emoji']!,
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  e['label']!,
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int?>(
+                            value: selectedShiftId,
+                            isExpanded: true,
+                            hint: const Text('Select a Shift'),
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF4F46E5)),
+                            items: [
+                              const DropdownMenuItem<int?>(
+                                value: 0,
+                                child: Text(
+                                  'None Shift Assigned (Standard Office Hours)',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w700,
-                                    color: isSelected
-                                        ? const Color(0xFF10B981)
-                                        : Colors.grey.shade600,
+                                    color: Color(0xFF4F46E5),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                              ...provider.shifts.map((Shift shift) {
+                                return DropdownMenuItem<int?>(
+                                  value: shift.id,
+                                  child: Text(
+                                    '${shift.name} (${shift.checkInTime.substring(0, 5)} - ${shift.checkOutTime.substring(0, 5)})',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ],
+                            onChanged: (int? value) {
+                              setSheetState(() {
+                                selectedShiftId = value;
+                              });
+                            },
                           ),
                         ),
                       ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (selectedMood == null) {
-                        AppMessages.showError(
-                          context,
-                          'Please select your mood to proceed with check-in.',
-                        );
-                        return;
-                      }
-                      if (selectedEnergy == null) {
-                        AppMessages.showError(
-                          context,
-                          'Please select your energy level to proceed with check-in.',
-                        );
-                        return;
-                      }
-                      Navigator.pop(ctx);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AttendanceCaptureScreen(
-                            isCheckout: false,
-                            mood: selectedMood,
-                            energyLevel: selectedEnergy,
+                  ],
+
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      const Text(
+                        'Mood',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF64748B),
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        '*',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: moods.map((m) {
+                      final isSelected = selectedMood == m['key'];
+                      return GestureDetector(
+                        onTap: () => setSheetState(() => selectedMood = m['key']),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 74,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF4F46E5).withValues(alpha: 0.1)
+                                : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF4F46E5)
+                                  : Colors.grey.shade200,
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                m['emoji']!,
+                                style: const TextStyle(fontSize: 28),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                m['label']!,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSelected
+                                      ? const Color(0xFF4F46E5)
+                                      : Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F46E5),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      const Text(
+                        'Energy Level',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF64748B),
+                          letterSpacing: 0.8,
+                        ),
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Continue to Check-In →',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
+                      const SizedBox(width: 4),
+                      const Text(
+                        '*',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: energies.map((e) {
+                      final isSelected = selectedEnergy == e['key'];
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () =>
+                                setSheetState(() => selectedEnergy = e['key']),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(
+                                        0xFF10B981,
+                                      ).withValues(alpha: 0.1)
+                                    : Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFF10B981)
+                                      : Colors.grey.shade200,
+                                  width: isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    e['emoji']!,
+                                    style: const TextStyle(fontSize: 20),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    e['label']!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: isSelected
+                                          ? const Color(0xFF10B981)
+                                          : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (isFirstCheckIn && provider.shifts.isNotEmpty && selectedShiftId == null) {
+                          AppMessages.showError(
+                            context,
+                            'Please select a shift to proceed with check-in.',
+                          );
+                          return;
+                        }
+                        if (selectedMood == null) {
+                          AppMessages.showError(
+                            context,
+                            'Please select your mood to proceed with check-in.',
+                          );
+                          return;
+                        }
+                        if (selectedEnergy == null) {
+                          AppMessages.showError(
+                            context,
+                            'Please select your energy level to proceed with check-in.',
+                          );
+                          return;
+                        }
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AttendanceCaptureScreen(
+                              isCheckout: false,
+                              mood: selectedMood,
+                              energyLevel: selectedEnergy,
+                              shiftId: selectedShiftId,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4F46E5),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Continue to Check-In →',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
