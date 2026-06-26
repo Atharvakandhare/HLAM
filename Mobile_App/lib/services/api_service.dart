@@ -6,6 +6,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import '../main.dart';
 
 class ApiException implements Exception {
@@ -28,16 +29,9 @@ class ApiException implements Exception {
 class ApiService {
   static ApiException? lastApiException;
 
-  // Localhost API server (auto-detects Android Emulator vs iOS Simulator/Web/Desktop)
+  // Live API server
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000/api';
-    }
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      // 10.0.2.2 is the special IP address mapped to the localhost of the host machine by the Android Emulator
-      return 'http://10.0.2.2:8000/api';
-    }
-    return 'http://localhost:8000/api'; // iOS Simulator / Desktop
+    return 'https://intime.hirelyft.in/api';
   }
 
 
@@ -46,6 +40,21 @@ class ApiService {
       encryptedSharedPreferences: true,
     ),
   );
+
+  Future<String> getOrCreateDeviceId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? deviceId = prefs.getString('device_id');
+      if (deviceId == null) {
+        deviceId = const Uuid().v4();
+        await prefs.setString('device_id', deviceId);
+      }
+      return deviceId;
+    } catch (e) {
+      debugPrint('Error getting device ID: $e');
+      return 'fallback_device_id_${DateTime.now().millisecondsSinceEpoch}';
+    }
+  }
 
   Future<String?> getToken() async {
     try {
@@ -280,6 +289,20 @@ class ApiService {
   Future<Map<String, dynamic>> updateProfilePicture(String profilePicture) async {
     return await put('/auth/profile-picture', {
       'profilePicture': profilePicture,
+    });
+  }
+
+  Future<Map<String, dynamic>> updateProfile({
+    required String name,
+    String? dob,
+    String? state,
+    String? city,
+  }) async {
+    return await put('/auth/profile', {
+      'name': name,
+      if (dob != null) 'dob': dob,
+      if (state != null) 'state': state,
+      if (city != null) 'city': city,
     });
   }
 

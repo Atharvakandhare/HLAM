@@ -12,7 +12,6 @@ import '../utils/app_messages.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
-
 class AddEmployeeScreen extends StatefulWidget {
   final User? employee;
   final int? preFilledTeamId;
@@ -47,6 +46,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
   bool _isUploadingPicture = false;
   bool _isEditMode = false;
   String _selectedRole = 'employee';
+  int _currentStep = 0;
 
   User? _currentUser;
   bool _isCustomState = false;
@@ -55,43 +55,174 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
   String? _dropdownCity;
 
   static const Map<String, List<String>> _indiaStatesAndCities = {
-    'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Tirupati', 'Kurnool', 'Other'],
-    'Arunachal Pradesh': ['Itanagar', 'Naharlagun', 'Tawang', 'Pasighat', 'Other'],
+    'Andhra Pradesh': [
+      'Visakhapatnam',
+      'Vijayawada',
+      'Guntur',
+      'Nellore',
+      'Tirupati',
+      'Kurnool',
+      'Other',
+    ],
+    'Arunachal Pradesh': [
+      'Itanagar',
+      'Naharlagun',
+      'Tawang',
+      'Pasighat',
+      'Other',
+    ],
     'Assam': ['Guwahati', 'Dibrugarh', 'Silchar', 'Jorhat', 'Nagaon', 'Other'],
-    'Bihar': ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur', 'Darbhanga', 'Other'],
+    'Bihar': [
+      'Patna',
+      'Gaya',
+      'Bhagalpur',
+      'Muzaffarpur',
+      'Darbhanga',
+      'Other',
+    ],
     'Chhattisgarh': ['Raipur', 'Bhilai', 'Bilaspur', 'Korba', 'Durg', 'Other'],
     'Goa': ['Panaji', 'Margao', 'Vasco da Gama', 'Mapusa', 'Other'],
-    'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Other'],
-    'Haryana': ['Faridabad', 'Gurugram', 'Panipat', 'Ambala', 'Yamunanagar', 'Other'],
+    'Gujarat': [
+      'Ahmedabad',
+      'Surat',
+      'Vadodara',
+      'Rajkot',
+      'Bhavnagar',
+      'Jamnagar',
+      'Other',
+    ],
+    'Haryana': [
+      'Faridabad',
+      'Gurugram',
+      'Panipat',
+      'Ambala',
+      'Yamunanagar',
+      'Other',
+    ],
     'Himachal Pradesh': ['Shimla', 'Dharamshala', 'Solan', 'Mandi', 'Other'],
-    'Jharkhand': ['Ranchi', 'Jamshedpur', 'Dhanbad', 'Bokaro Steel City', 'Other'],
-    'Karnataka': ['Bengaluru', 'Mysuru', 'Hubballi-Dharwad', 'Mangaluru', 'Belagavi', 'Other'],
-    'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur', 'Kollam', 'Other'],
-    'Madhya Pradesh': ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Other'],
-    'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad', 'Solapur', 'Other'],
+    'Jharkhand': [
+      'Ranchi',
+      'Jamshedpur',
+      'Dhanbad',
+      'Bokaro Steel City',
+      'Other',
+    ],
+    'Karnataka': [
+      'Bengaluru',
+      'Mysuru',
+      'Hubballi-Dharwad',
+      'Mangaluru',
+      'Belagavi',
+      'Other',
+    ],
+    'Kerala': [
+      'Thiruvananthapuram',
+      'Kochi',
+      'Kozhikode',
+      'Thrissur',
+      'Kollam',
+      'Other',
+    ],
+    'Madhya Pradesh': [
+      'Indore',
+      'Bhopal',
+      'Jabalpur',
+      'Gwalior',
+      'Ujjain',
+      'Other',
+    ],
+    'Maharashtra': [
+      'Mumbai',
+      'Pune',
+      'Nagpur',
+      'Thane',
+      'Nashik',
+      'Aurangabad',
+      'Solapur',
+      'Other',
+    ],
     'Manipur': ['Imphal', 'Thoubal', 'Bishnupur', 'Other'],
     'Meghalaya': ['Shillong', 'Tura', 'Jowai', 'Other'],
     'Mizoram': ['Aizawl', 'Lunglei', 'Champhai', 'Other'],
     'Nagaland': ['Kohima', 'Dimapur', 'Mokokchung', 'Other'],
-    'Odisha': ['Bhubaneswar', 'Cuttack', 'Rourkela', 'Sambalpur', 'Puri', 'Other'],
-    'Punjab': ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Bathinda', 'Other'],
-    'Rajasthan': ['Jaipur', 'Jodhpur', 'Kota', 'Bikaner', 'Ajmer', 'Udaipur', 'Other'],
+    'Odisha': [
+      'Bhubaneswar',
+      'Cuttack',
+      'Rourkela',
+      'Sambalpur',
+      'Puri',
+      'Other',
+    ],
+    'Punjab': [
+      'Ludhiana',
+      'Amritsar',
+      'Jalandhar',
+      'Patiala',
+      'Bathinda',
+      'Other',
+    ],
+    'Rajasthan': [
+      'Jaipur',
+      'Jodhpur',
+      'Kota',
+      'Bikaner',
+      'Ajmer',
+      'Udaipur',
+      'Other',
+    ],
     'Sikkim': ['Gangtok', 'Namchi', 'Geyzing', 'Other'],
-    'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Other'],
-    'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad', 'Khammam', 'Karimnagar', 'Other'],
+    'Tamil Nadu': [
+      'Chennai',
+      'Coimbatore',
+      'Madurai',
+      'Tiruchirappalli',
+      'Salem',
+      'Tirunelveli',
+      'Other',
+    ],
+    'Telangana': [
+      'Hyderabad',
+      'Warangal',
+      'Nizamabad',
+      'Khammam',
+      'Karimnagar',
+      'Other',
+    ],
     'Tripura': ['Agartala', 'Dharmanagar', 'Udaipur', 'Other'],
-    'Uttar Pradesh': ['Lucknow', 'Kanpur', 'Ghaziabad', 'Agra', 'Varanasi', 'Meerut', 'Noida', 'Prayagraj', 'Other'],
+    'Uttar Pradesh': [
+      'Lucknow',
+      'Kanpur',
+      'Ghaziabad',
+      'Agra',
+      'Varanasi',
+      'Meerut',
+      'Noida',
+      'Prayagraj',
+      'Other',
+    ],
     'Uttarakhand': ['Dehradun', 'Haridwar', 'Haldwani', 'Roorkee', 'Other'],
-    'West Bengal': ['Kolkata', 'Howrah', 'Asansol', 'Siliguri', 'Durgapur', 'Other'],
+    'West Bengal': [
+      'Kolkata',
+      'Howrah',
+      'Asansol',
+      'Siliguri',
+      'Durgapur',
+      'Other',
+    ],
     'Andaman and Nicobar Islands': ['Port Blair', 'Other'],
     'Chandigarh': ['Chandigarh', 'Other'],
-    'Dadra and Nagar Haveli and Daman and Diu': ['Daman', 'Diu', 'Silvassa', 'Other'],
+    'Dadra and Nagar Haveli and Daman and Diu': [
+      'Daman',
+      'Diu',
+      'Silvassa',
+      'Other',
+    ],
     'Delhi': ['New Delhi', 'Dwarka', 'Rohini', 'Other'],
     'Jammu and Kashmir': ['Srinagar', 'Jammu', 'Anantnag', 'Other'],
     'Ladakh': ['Leh', 'Kargil', 'Other'],
     'Lakshadweep': ['Kavaratti', 'Other'],
     'Puducherry': ['Puducherry', 'Karaikal', 'Other'],
-    'Other': ['Other']
+    'Other': ['Other'],
   };
 
   List<String> _getAvailableRoles() {
@@ -106,14 +237,13 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     } else {
       roles = ['employee'];
     }
-    
+
     // Ensure that in edit mode, the employee's current role is included
     if (_isEditMode && !roles.contains(_selectedRole)) {
       roles.insert(0, _selectedRole);
     }
     return roles;
   }
-
 
   final List<String> _workModes = [
     'Work From Office',
@@ -238,7 +368,9 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
         if (!_isCustomState &&
             _dropdownState != null &&
             _indiaStatesAndCities[_dropdownState] != null &&
-            _indiaStatesAndCities[_dropdownState]!.contains(_cityController.text)) {
+            _indiaStatesAndCities[_dropdownState]!.contains(
+              _cityController.text,
+            )) {
           _dropdownCity = _cityController.text;
           _isCustomCity = false;
         } else {
@@ -288,7 +420,9 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     } catch (e) {
       if (mounted) {
         String errMsg = e.toString();
-        if (errMsg.contains('photo_access_denied') || errMsg.contains('permission') || errMsg.contains('Permission')) {
+        if (errMsg.contains('photo_access_denied') ||
+            errMsg.contains('permission') ||
+            errMsg.contains('Permission')) {
           AppMessages.showError(
             context,
             'Gallery permission is required to choose a profile picture. Please enable in App Settings.',
@@ -455,21 +589,29 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
             Future<void> downloadTemplate() async {
-              setSheetState(() { isLoading = true; errorMessage = null; });
+              setSheetState(() {
+                isLoading = true;
+                errorMessage = null;
+              });
               try {
                 final bytes = await ApiService().downloadEmployeeTemplate();
                 final tempDir = await getTemporaryDirectory();
-                final tempFile = File('${tempDir.path}/employees_template.xlsx');
+                final tempFile = File(
+                  '${tempDir.path}/employees_template.xlsx',
+                );
                 await tempFile.writeAsBytes(bytes);
-                await SharePlus.instance.share(ShareParams(
-                  files: [XFile(tempFile.path)],
-                  text: 'HLAM – Bulk Employee Upload Template',
-                ));
+                await SharePlus.instance.share(
+                  ShareParams(
+                    files: [XFile(tempFile.path)],
+                    text: 'HLAM – Bulk Employee Upload Template',
+                  ),
+                );
                 setSheetState(() => isLoading = false);
               } catch (e) {
                 setSheetState(() {
                   isLoading = false;
-                  errorMessage = 'Download failed. Please check your connection.';
+                  errorMessage =
+                      'Download failed. Please check your connection.';
                 });
               }
             }
@@ -489,30 +631,53 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                   });
                 }
               } catch (e) {
-                setSheetState(() => errorMessage = 'Could not open file picker: $e');
+                setSheetState(
+                  () => errorMessage = 'Could not open file picker: $e',
+                );
               }
             }
 
             Future<void> uploadFile() async {
               if (selectedFile == null) {
-                setSheetState(() => errorMessage = 'Please select a file first.');
+                setSheetState(
+                  () => errorMessage = 'Please select a file first.',
+                );
                 return;
               }
-              final bytes = selectedFile!.bytes ??
-                  (selectedFile!.path != null ? await File(selectedFile!.path!).readAsBytes() : null);
+              final bytes =
+                  selectedFile!.bytes ??
+                  (selectedFile!.path != null
+                      ? await File(selectedFile!.path!).readAsBytes()
+                      : null);
               if (bytes == null) {
-                setSheetState(() => errorMessage = 'Could not read the file. Try again.');
+                setSheetState(
+                  () => errorMessage = 'Could not read the file. Try again.',
+                );
                 return;
               }
-              setSheetState(() { isLoading = true; errorMessage = null; resultReport = null; });
+              setSheetState(() {
+                isLoading = true;
+                errorMessage = null;
+                resultReport = null;
+              });
               try {
-                final report = await ApiService().bulkUploadEmployees(bytes, selectedFile!.name);
-                setSheetState(() { isLoading = false; resultReport = report; selectedFile = null; });
+                final report = await ApiService().bulkUploadEmployees(
+                  bytes,
+                  selectedFile!.name,
+                );
+                setSheetState(() {
+                  isLoading = false;
+                  resultReport = report;
+                  selectedFile = null;
+                });
                 if ((report['insertedCount'] ?? 0) > 0 && ctx.mounted) {
                   Provider.of<AppProvider>(ctx, listen: false).fetchEmployees();
                 }
               } catch (e) {
-                setSheetState(() { isLoading = false; errorMessage = e.toString(); });
+                setSheetState(() {
+                  isLoading = false;
+                  errorMessage = e.toString();
+                });
               }
             }
 
@@ -529,13 +694,16 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                 return Container(
                   decoration: const BoxDecoration(
                     color: Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
                   ),
                   child: Column(
                     children: [
                       const SizedBox(height: 12),
                       Container(
-                        width: 40, height: 4,
+                        width: 40,
+                        height: 4,
                         decoration: BoxDecoration(
                           color: const Color(0xFFCBD5E1),
                           borderRadius: BorderRadius.circular(4),
@@ -556,14 +724,20 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
-                                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB), Color(0xFF4F46E5)],
+                                    colors: [
+                                      Color(0xFF1E3A8A),
+                                      Color(0xFF2563EB),
+                                      Color(0xFF4F46E5),
+                                    ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                                      color: const Color(
+                                        0xFF2563EB,
+                                      ).withValues(alpha: 0.3),
                                       blurRadius: 16,
                                       offset: const Offset(0, 6),
                                     ),
@@ -574,33 +748,65 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.15),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         borderRadius: BorderRadius.circular(14),
                                       ),
-                                      child: const Icon(Icons.table_chart_rounded, color: Colors.white, size: 28),
+                                      child: const Icon(
+                                        Icons.table_chart_rounded,
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
                                     ),
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          const Text('Bulk Employee Upload',
-                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.3)),
+                                          const Text(
+                                            'Bulk Employee Upload',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 18,
+                                              letterSpacing: -0.3,
+                                            ),
+                                          ),
                                           const SizedBox(height: 4),
-                                          Text('Register multiple employees at once using an Excel sheet.',
-                                            style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12, height: 1.4)),
+                                          Text(
+                                            'Register multiple employees at once using an Excel sheet.',
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                              fontSize: 12,
+                                              height: 1.4,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
                                     IconButton(
-                                      onPressed: isLoading ? null : () => Navigator.pop(sheetContext),
+                                      onPressed: isLoading
+                                          ? null
+                                          : () => Navigator.pop(sheetContext),
                                       icon: Container(
                                         padding: const EdgeInsets.all(6),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
-                                        child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
+                                        child: const Icon(
+                                          Icons.close_rounded,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -609,124 +815,279 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                               const SizedBox(height: 24),
 
                               if (!hasResult) ...[
-                                _buildBulkStepCard(step: '1', title: 'Download Template',
-                                  subtitle: 'Get the official Excel template with all required columns.',
-                                  icon: Icons.download_rounded, iconColor: const Color(0xFF0EA5E9), bgColor: const Color(0xFFEFF6FF),
+                                _buildBulkStepCard(
+                                  step: '1',
+                                  title: 'Download Template',
+                                  subtitle:
+                                      'Get the official Excel template with all required columns.',
+                                  icon: Icons.download_rounded,
+                                  iconColor: const Color(0xFF0EA5E9),
+                                  bgColor: const Color(0xFFEFF6FF),
                                   child: SizedBox(
                                     width: double.infinity,
                                     child: OutlinedButton.icon(
                                       style: OutlinedButton.styleFrom(
-                                        foregroundColor: const Color(0xFF2563EB),
-                                        side: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        padding: const EdgeInsets.symmetric(vertical: 13),
+                                        foregroundColor: const Color(
+                                          0xFF2563EB,
+                                        ),
+                                        side: const BorderSide(
+                                          color: Color(0xFF2563EB),
+                                          width: 1.5,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 13,
+                                        ),
                                       ),
-                                      onPressed: isLoading ? null : downloadTemplate,
-                                      icon: const Icon(Icons.download_rounded, size: 18),
-                                      label: const Text('Download employees_template.xlsx',
-                                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                      onPressed: isLoading
+                                          ? null
+                                          : downloadTemplate,
+                                      icon: const Icon(
+                                        Icons.download_rounded,
+                                        size: 18,
+                                      ),
+                                      label: const Text(
+                                        'Download employees_template.xlsx',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(height: 14),
 
-                                _buildBulkStepCard(step: '2', title: 'Select Filled Spreadsheet',
-                                  subtitle: 'Fill the template and pick the file from your device.',
-                                  icon: Icons.folder_open_rounded, iconColor: const Color(0xFF8B5CF6), bgColor: const Color(0xFFF5F3FF),
+                                _buildBulkStepCard(
+                                  step: '2',
+                                  title: 'Select Filled Spreadsheet',
+                                  subtitle:
+                                      'Fill the template and pick the file from your device.',
+                                  icon: Icons.folder_open_rounded,
+                                  iconColor: const Color(0xFF8B5CF6),
+                                  bgColor: const Color(0xFFF5F3FF),
                                   child: GestureDetector(
                                     onTap: isLoading ? null : pickFile,
                                     child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
                                       width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 18,
+                                        horizontal: 16,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: selectedFile != null ? const Color(0xFFEFF6FF) : Colors.white,
+                                        color: selectedFile != null
+                                            ? const Color(0xFFEFF6FF)
+                                            : Colors.white,
                                         borderRadius: BorderRadius.circular(14),
                                         border: Border.all(
-                                          color: selectedFile != null ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+                                          color: selectedFile != null
+                                              ? const Color(0xFF2563EB)
+                                              : const Color(0xFFE2E8F0),
                                           width: selectedFile != null ? 2 : 1.5,
                                         ),
                                       ),
                                       child: selectedFile == null
-                                          ? Column(children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(12),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
-                                                  shape: BoxShape.circle,
+                                          ? Column(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    12,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFF8B5CF6,
+                                                    ).withValues(alpha: 0.1),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.upload_file_rounded,
+                                                    color: Color(0xFF8B5CF6),
+                                                    size: 28,
+                                                  ),
                                                 ),
-                                                child: const Icon(Icons.upload_file_rounded, color: Color(0xFF8B5CF6), size: 28),
-                                              ),
-                                              const SizedBox(height: 10),
-                                              const Text('Tap to browse files',
-                                                style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w700, fontSize: 14)),
-                                              const SizedBox(height: 4),
-                                              const Text('.xlsx  •  .xls  •  .csv',
-                                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
-                                            ])
-                                          : Row(children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(10),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFF2563EB).withValues(alpha: 0.1),
-                                                  borderRadius: BorderRadius.circular(10),
+                                                const SizedBox(height: 10),
+                                                const Text(
+                                                  'Tap to browse files',
+                                                  style: TextStyle(
+                                                    color: Color(0xFF1E293B),
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 14,
+                                                  ),
                                                 ),
-                                                child: const Icon(Icons.table_chart_rounded, color: Color(0xFF2563EB), size: 22),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                                Text(selectedFile!.name,
-                                                  style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w700, fontSize: 13),
-                                                  overflow: TextOverflow.ellipsis),
-                                                Text('${(selectedFile!.size / 1024).toStringAsFixed(1)} KB',
-                                                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 11)),
-                                              ])),
-                                              GestureDetector(
-                                                onTap: () => setSheetState(() { selectedFile = null; errorMessage = null; }),
-                                                child: const Icon(Icons.cancel_rounded, color: Color(0xFF94A3B8), size: 22),
-                                              ),
-                                            ]),
+                                                const SizedBox(height: 4),
+                                                const Text(
+                                                  '.xlsx  •  .xls  •  .csv',
+                                                  style: TextStyle(
+                                                    color: Color(0xFF94A3B8),
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    10,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFF2563EB,
+                                                    ).withValues(alpha: 0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10,
+                                                        ),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.table_chart_rounded,
+                                                    color: Color(0xFF2563EB),
+                                                    size: 22,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        selectedFile!.name,
+                                                        style: const TextStyle(
+                                                          color: Color(
+                                                            0xFF0F172A,
+                                                          ),
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          fontSize: 13,
+                                                        ),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                      Text(
+                                                        '${(selectedFile!.size / 1024).toStringAsFixed(1)} KB',
+                                                        style: const TextStyle(
+                                                          color: Color(
+                                                            0xFF64748B,
+                                                          ),
+                                                          fontSize: 11,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                GestureDetector(
+                                                  onTap: () =>
+                                                      setSheetState(() {
+                                                        selectedFile = null;
+                                                        errorMessage = null;
+                                                      }),
+                                                  child: const Icon(
+                                                    Icons.cancel_rounded,
+                                                    color: Color(0xFF94A3B8),
+                                                    size: 22,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(height: 14),
 
-                                _buildBulkStepCard(step: '3', title: 'Register Employees',
-                                  subtitle: 'Upload the spreadsheet to register all employees in your company.',
-                                  icon: Icons.cloud_upload_rounded, iconColor: const Color(0xFF10B981), bgColor: const Color(0xFFECFDF5),
-                                  child: Column(children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFEF3C7),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(color: const Color(0xFFFDE68A)),
-                                      ),
-                                      child: const Row(children: [
-                                        Icon(Icons.lock_outline_rounded, color: Color(0xFFD97706), size: 16),
-                                        SizedBox(width: 8),
-                                        Expanded(child: Text(
-                                          'All employees will be assigned to your company automatically.',
-                                          style: TextStyle(color: Color(0xFFD97706), fontSize: 11, fontWeight: FontWeight.w500))),
-                                      ]),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    SizedBox(
-                                      width: double.infinity, height: 50,
-                                      child: ElevatedButton.icon(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: selectedFile != null ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1),
-                                          foregroundColor: Colors.white,
-                                          elevation: selectedFile != null ? 2 : 0,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                _buildBulkStepCard(
+                                  step: '3',
+                                  title: 'Register Employees',
+                                  subtitle:
+                                      'Upload the spreadsheet to register all employees in your company.',
+                                  icon: Icons.cloud_upload_rounded,
+                                  iconColor: const Color(0xFF10B981),
+                                  bgColor: const Color(0xFFECFDF5),
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
                                         ),
-                                        onPressed: (selectedFile != null && !isLoading) ? uploadFile : null,
-                                        icon: const Icon(Icons.rocket_launch_rounded, size: 20),
-                                        label: const Text('Upload & Register',
-                                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.2)),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFEF3C7),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color: const Color(0xFFFDE68A),
+                                          ),
+                                        ),
+                                        child: const Row(
+                                          children: [
+                                            Icon(
+                                              Icons.lock_outline_rounded,
+                                              color: Color(0xFFD97706),
+                                              size: 16,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'All employees will be assigned to your company automatically.',
+                                                style: TextStyle(
+                                                  color: Color(0xFFD97706),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ]),
+                                      const SizedBox(height: 12),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        height: 50,
+                                        child: ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                selectedFile != null
+                                                ? const Color(0xFF2563EB)
+                                                : const Color(0xFFCBD5E1),
+                                            foregroundColor: Colors.white,
+                                            elevation: selectedFile != null
+                                                ? 2
+                                                : 0,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                            ),
+                                          ),
+                                          onPressed:
+                                              (selectedFile != null &&
+                                                  !isLoading)
+                                              ? uploadFile
+                                              : null,
+                                          icon: const Icon(
+                                            Icons.rocket_launch_rounded,
+                                            size: 20,
+                                          ),
+                                          label: const Text(
+                                            'Upload & Register',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 15,
+                                              letterSpacing: 0.2,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ] else ...[
                                 Container(
@@ -735,33 +1096,77 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: inserted > 0
-                                          ? [const Color(0xFF065F46), const Color(0xFF10B981)]
-                                          : [const Color(0xFF7F1D1D), const Color(0xFFEF4444)],
+                                          ? [
+                                              const Color(0xFF065F46),
+                                              const Color(0xFF10B981),
+                                            ]
+                                          : [
+                                              const Color(0xFF7F1D1D),
+                                              const Color(0xFFEF4444),
+                                            ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: (inserted > 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444)).withValues(alpha: 0.3),
-                                        blurRadius: 16, offset: const Offset(0, 6),
+                                        color:
+                                            (inserted > 0
+                                                    ? const Color(0xFF10B981)
+                                                    : const Color(0xFFEF4444))
+                                                .withValues(alpha: 0.3),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 6),
                                       ),
                                     ],
                                   ),
-                                  child: Column(children: [
-                                    Icon(inserted > 0 ? Icons.check_circle_rounded : Icons.error_rounded, color: Colors.white, size: 48),
-                                    const SizedBox(height: 10),
-                                    Text(inserted > 0 ? 'Upload Complete!' : 'Upload Failed',
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.3)),
-                                    const SizedBox(height: 16),
-                                    Row(children: [
-                                      Expanded(child: _buildBulkStatPill(value: '$inserted', label: 'Registered',
-                                        icon: Icons.person_add_rounded, color: Colors.white)),
-                                      const SizedBox(width: 12),
-                                      Expanded(child: _buildBulkStatPill(value: '$failed', label: 'Failed',
-                                        icon: Icons.person_remove_rounded, color: Colors.white.withValues(alpha: 0.85))),
-                                    ]),
-                                  ]),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        inserted > 0
+                                            ? Icons.check_circle_rounded
+                                            : Icons.error_rounded,
+                                        color: Colors.white,
+                                        size: 48,
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        inserted > 0
+                                            ? 'Upload Complete!'
+                                            : 'Upload Failed',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 20,
+                                          letterSpacing: -0.3,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildBulkStatPill(
+                                              value: '$inserted',
+                                              label: 'Registered',
+                                              icon: Icons.person_add_rounded,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: _buildBulkStatPill(
+                                              value: '$failed',
+                                              label: 'Failed',
+                                              icon: Icons.person_remove_rounded,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.85,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 const SizedBox(height: 16),
 
@@ -770,72 +1175,180 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: const Color(0xFFFECACA)),
+                                      border: Border.all(
+                                        color: const Color(0xFFFECACA),
+                                      ),
                                     ),
-                                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                      Padding(
-                                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                                        child: Row(children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(6),
-                                            decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(8)),
-                                            child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            16,
+                                            14,
+                                            16,
+                                            8,
                                           ),
-                                          const SizedBox(width: 10),
-                                          Text('${errors.length} Row${errors.length > 1 ? 's' : ''} Had Issues',
-                                            style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFDC2626), fontSize: 14)),
-                                        ]),
-                                      ),
-                                      const Divider(height: 1, color: Color(0xFFFECACA)),
-                                      ListView.separated(
-                                        shrinkWrap: true,
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        padding: const EdgeInsets.all(12),
-                                        itemCount: errors.length,
-                                        separatorBuilder: (_, __) => const SizedBox(height: 6),
-                                        itemBuilder: (_, i) => Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                          decoration: BoxDecoration(color: const Color(0xFFFFF5F5), borderRadius: BorderRadius.circular(8)),
-                                          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                            const Padding(padding: EdgeInsets.only(top: 2),
-                                              child: Icon(Icons.circle, size: 6, color: Color(0xFFEF4444))),
-                                            const SizedBox(width: 8),
-                                            Expanded(child: Text(errors[i].toString(),
-                                              style: const TextStyle(color: Color(0xFF7F1D1D), fontSize: 12, height: 1.4))),
-                                          ]),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFFFEE2E2,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.warning_amber_rounded,
+                                                  color: Color(0xFFDC2626),
+                                                  size: 16,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Text(
+                                                '${errors.length} Row${errors.length > 1 ? 's' : ''} Had Issues',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Color(0xFFDC2626),
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    ]),
+                                        const Divider(
+                                          height: 1,
+                                          color: Color(0xFFFECACA),
+                                        ),
+                                        ListView.separated(
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          padding: const EdgeInsets.all(12),
+                                          itemCount: errors.length,
+                                          separatorBuilder: (_, __) =>
+                                              const SizedBox(height: 6),
+                                          itemBuilder: (_, i) => Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFFF5F5),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Padding(
+                                                  padding: EdgeInsets.only(
+                                                    top: 2,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.circle,
+                                                    size: 6,
+                                                    color: Color(0xFFEF4444),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    errors[i].toString(),
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF7F1D1D),
+                                                      fontSize: 12,
+                                                      height: 1.4,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                   const SizedBox(height: 16),
                                 ],
 
-                                Row(children: [
-                                  Expanded(child: OutlinedButton.icon(
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF2563EB),
-                                      side: const BorderSide(color: Color(0xFF2563EB)),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      padding: const EdgeInsets.symmetric(vertical: 13),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: const Color(
+                                            0xFF2563EB,
+                                          ),
+                                          side: const BorderSide(
+                                            color: Color(0xFF2563EB),
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 13,
+                                          ),
+                                        ),
+                                        onPressed: () => setSheetState(() {
+                                          resultReport = null;
+                                          selectedFile = null;
+                                          errorMessage = null;
+                                        }),
+                                        icon: const Icon(
+                                          Icons.upload_rounded,
+                                          size: 18,
+                                        ),
+                                        label: const Text(
+                                          'Upload Another',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    onPressed: () => setSheetState(() { resultReport = null; selectedFile = null; errorMessage = null; }),
-                                    icon: const Icon(Icons.upload_rounded, size: 18),
-                                    label: const Text('Upload Another', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  )),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF2563EB),
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      padding: const EdgeInsets.symmetric(vertical: 13),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(
+                                            0xFF2563EB,
+                                          ),
+                                          foregroundColor: Colors.white,
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 13,
+                                          ),
+                                        ),
+                                        onPressed: () =>
+                                            Navigator.pop(sheetContext),
+                                        icon: const Icon(
+                                          Icons.done_rounded,
+                                          size: 18,
+                                        ),
+                                        label: const Text(
+                                          'Done',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    onPressed: () => Navigator.pop(sheetContext),
-                                    icon: const Icon(Icons.done_rounded, size: 18),
-                                    label: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  )),
-                                ]),
+                                  ],
+                                ),
                               ],
 
                               if (isLoading) ...[
@@ -846,23 +1359,51 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: [
-                                      BoxShadow(color: const Color(0xFF0F172A).withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4)),
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFF0F172A,
+                                        ).withValues(alpha: 0.06),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 4),
+                                      ),
                                     ],
                                   ),
-                                  child: Column(children: [
-                                    const SizedBox(
-                                      width: 48, height: 48,
-                                      child: CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)), strokeWidth: 3),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    const Text('Processing...', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF0F172A))),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      selectedFile != null ? 'Validating and registering employees from ${selectedFile!.name}' : 'Please wait...',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, height: 1.5)),
-                                  ]),
+                                  child: Column(
+                                    children: [
+                                      const SizedBox(
+                                        width: 48,
+                                        height: 48,
+                                        child: CircularProgressIndicator(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Color(0xFF2563EB),
+                                              ),
+                                          strokeWidth: 3,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Processing...',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 16,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        selectedFile != null
+                                            ? 'Validating and registering employees from ${selectedFile!.name}'
+                                            : 'Please wait...',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: Color(0xFF64748B),
+                                          fontSize: 12,
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
 
@@ -873,14 +1414,30 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFFEF2F2),
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: const Color(0xFFFECACA)),
+                                    border: Border.all(
+                                      color: const Color(0xFFFECACA),
+                                    ),
                                   ),
-                                  child: Row(children: [
-                                    const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 20),
-                                    const SizedBox(width: 10),
-                                    Expanded(child: Text(errorMessage!,
-                                      style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13, fontWeight: FontWeight.w500))),
-                                  ]),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline_rounded,
+                                        color: Color(0xFFEF4444),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          errorMessage!,
+                                          style: const TextStyle(
+                                            color: Color(0xFF991B1B),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ],
@@ -912,41 +1469,90 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
-          BoxShadow(color: const Color(0xFF0F172A).withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 3)),
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: Row(children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Row(
+              children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text('STEP $step',
-                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF2563EB), letterSpacing: 0.8)),
+                  child: Icon(icon, color: iconColor, size: 20),
                 ),
-                const SizedBox(width: 8),
-                Expanded(child: Text(title,
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0F172A), fontSize: 14))),
-              ]),
-              const SizedBox(height: 3),
-              Text(subtitle, style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, height: 1.4)),
-            ])),
-          ]),
-        ),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: child),
-      ]),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF2563EB,
+                              ).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'STEP $step',
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2563EB),
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: child,
+          ),
+        ],
+      ),
     );
   }
 
@@ -963,20 +1569,128 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
       ),
-      child: Row(children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 10),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 22)),
-          Text(label, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 11)),
-        ]),
-      ]),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 22,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color.withValues(alpha: 0.8),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepIndicator() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _buildStepNode(0, 'Profile', Icons.person_outline_rounded),
+          _buildStepLine(1),
+          _buildStepNode(1, 'Location', Icons.map_outlined),
+          _buildStepLine(2),
+          _buildStepNode(2, 'Job Info', Icons.badge_outlined),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepNode(int index, String label, IconData icon) {
+    final isActive = _currentStep >= index;
+    final isCurrent = _currentStep == index;
+
+    return Expanded(
+      child: Column(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isCurrent
+                  ? const Color(0xFF2563EB)
+                  : (isActive
+                        ? const Color(0xFFE0F2FE)
+                        : const Color(0xFFF1F5F9)),
+              border: Border.all(
+                color: isCurrent
+                    ? const Color(0xFF2563EB)
+                    : (isActive
+                          ? const Color(0xFF38BDF8)
+                          : const Color(0xFFCBD5E1)),
+                width: 2,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: isCurrent
+                  ? Colors.white
+                  : (isActive
+                        ? const Color(0xFF0284C7)
+                        : const Color(0xFF94A3B8)),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
+              color: isCurrent
+                  ? const Color(0xFF2563EB)
+                  : (isActive
+                        ? const Color(0xFF0369A1)
+                        : const Color(0xFF64748B)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepLine(int index) {
+    final isPassed = _currentStep >= index;
+    return Container(
+      width: 30,
+      height: 2,
+      margin: const EdgeInsets.only(bottom: 18),
+      color: isPassed ? const Color(0xFF38BDF8) : const Color(0xFFE2E8F0),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-
     final teams = Provider.of<AppProvider>(context).teams;
     final title = _isEditMode ? 'Edit Profile' : 'Register Employee';
 
@@ -1020,14 +1734,20 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF1E3A8A), Color(0xFF2563EB), Color(0xFF4F46E5)],
+                          colors: [
+                            Color(0xFF1E3A8A),
+                            Color(0xFF2563EB),
+                            Color(0xFF4F46E5),
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                            color: const Color(
+                              0xFF2563EB,
+                            ).withValues(alpha: 0.25),
                             blurRadius: 14,
                             offset: const Offset(0, 5),
                           ),
@@ -1042,7 +1762,9 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
-                              _isEditMode ? Icons.edit_rounded : Icons.person_add_alt_1_rounded,
+                              _isEditMode
+                                  ? Icons.edit_rounded
+                                  : Icons.person_add_alt_1_rounded,
                               color: Colors.white,
                               size: 24,
                             ),
@@ -1053,7 +1775,9 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  _isEditMode ? 'Update Employee Record' : 'Add New Colleague',
+                                  _isEditMode
+                                      ? 'Update Employee Record'
+                                      : 'Add New Colleague',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w900,
@@ -1085,14 +1809,22 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                       GestureDetector(
                         onTap: () => _showBulkUploadSheet(context),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                            border: Border.all(
+                              color: const Color(0xFFE2E8F0),
+                              width: 1.5,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                                color: const Color(
+                                  0xFF0F172A,
+                                ).withValues(alpha: 0.03),
                                 blurRadius: 10,
                                 offset: const Offset(0, 3),
                               ),
@@ -1104,13 +1836,20 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
-                                    colors: [Color(0xFF7C3AED), Color(0xFF8B5CF6)],
+                                    colors: [
+                                      Color(0xFF7C3AED),
+                                      Color(0xFF8B5CF6),
+                                    ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.table_chart_rounded, color: Colors.white, size: 20),
+                                child: const Icon(
+                                  Icons.table_chart_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -1138,9 +1877,14 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                                  color: const Color(
+                                    0xFF7C3AED,
+                                  ).withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Text(
@@ -1153,7 +1897,11 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 20),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: Color(0xFF94A3B8),
+                                size: 20,
+                              ),
                             ],
                           ),
                         ),
@@ -1164,9 +1912,16 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         child: Row(
                           children: [
-                            Expanded(child: Divider(color: Colors.grey.shade200, thickness: 1)),
+                            Expanded(
+                              child: Divider(
+                                color: Colors.grey.shade200,
+                                thickness: 1,
+                              ),
+                            ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                               child: Text(
                                 'OR ADD MANUALLY',
                                 style: TextStyle(
@@ -1177,182 +1932,111 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                                 ),
                               ),
                             ),
-                            Expanded(child: Divider(color: Colors.grey.shade200, thickness: 1)),
+                            Expanded(
+                              child: Divider(
+                                color: Colors.grey.shade200,
+                                thickness: 1,
+                              ),
+                            ),
                           ],
                         ),
                       ),
 
                     if (_isEditMode) const SizedBox(height: 24),
 
-                    // Avatar Picker Header
-                    Center(
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 54,
-                            backgroundColor: const Color(
-                              0xFF2563EB,
-                            ).withValues(alpha: 0.08),
-                            backgroundImage: _pickedImage != null
-                                ? FileImage(File(_pickedImage!.path))
-                                : (_isEditMode &&
-                                          widget.employee?.profilePicture !=
-                                              null &&
-                                          widget
-                                              .employee!
-                                              .profilePicture!
-                                              .isNotEmpty
-                                      ? NetworkImage(
-                                              '${ApiService.baseUrl.replaceAll('/api', '')}${widget.employee!.profilePicture}',
-                                            )
-                                            as ImageProvider
-                                      : null),
-                            onBackgroundImageError: _pickedImage != null || (_isEditMode &&
+                    // Custom step progress bar indicator
+                    _buildStepIndicator(),
+
+                    if (_currentStep == 0) ...[
+                      // Step 1: Personal Profile Info
+                      Center(
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 54,
+                              backgroundColor: const Color(
+                                0xFF2563EB,
+                              ).withValues(alpha: 0.08),
+                              backgroundImage: _pickedImage != null
+                                  ? FileImage(File(_pickedImage!.path))
+                                  : (_isEditMode &&
+                                            widget.employee?.profilePicture !=
+                                                null &&
+                                            widget
+                                                .employee!
+                                                .profilePicture!
+                                                .isNotEmpty
+                                        ? NetworkImage(
+                                                '${ApiService.baseUrl.replaceAll('/api', '')}${widget.employee!.profilePicture}',
+                                              )
+                                              as ImageProvider
+                                        : null),
+                              onBackgroundImageError:
+                                  _pickedImage != null ||
+                                      (_isEditMode &&
                                           widget.employee?.profilePicture !=
                                               null &&
                                           widget
                                               .employee!
                                               .profilePicture!
                                               .isNotEmpty)
-                                ? (exception, stackTrace) {
-                                    debugPrint('Error loading profile image: $exception');
-                                  }
-                                : null,
-                            child:
-                                _pickedImage == null &&
-                                    (!_isEditMode ||
-                                        widget.employee?.profilePicture ==
-                                            null ||
-                                        widget
-                                            .employee!
-                                            .profilePicture!
-                                            .isEmpty)
-                                ? const Icon(
-                                    Icons.person_rounded,
-                                    size: 54,
-                                    color: Color(0xFF2563EB),
-                                  )
-                                : null,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: const Color(0xFF2563EB),
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.camera_alt_rounded,
-                                  color: Colors.white,
-                                  size: 16,
+                                  ? (exception, stackTrace) {
+                                      debugPrint(
+                                        'Error loading profile image: $exception',
+                                      );
+                                    }
+                                  : null,
+                              child:
+                                  _pickedImage == null &&
+                                      (!_isEditMode ||
+                                          widget.employee?.profilePicture ==
+                                              null ||
+                                          widget
+                                              .employee!
+                                              .profilePicture!
+                                              .isEmpty)
+                                  ? const Icon(
+                                      Icons.person_rounded,
+                                      size: 54,
+                                      color: Color(0xFF2563EB),
+                                    )
+                                  : null,
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: const Color(0xFF2563EB),
+                                child: IconButton(
+                                  icon: const Icon(
+                                    Icons.camera_alt_rounded,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                  onPressed: _pickImage,
                                 ),
-                                onPressed: _pickImage,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Category 1: Personal Profile
-                    _buildSectionHeader('PERSONAL PROFILE'),
-                    _buildCategoryCard([
-                      // Full Name
-                      Row(
-                        children: [
-                          const Text(
-                            'FULL NAME',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF64748B),
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '*',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _nameController,
-                        textCapitalization: TextCapitalization.words,
-                        validator: (val) => val == null || val.trim().isEmpty
-                            ? 'Name is required'
-                            : null,
-                        decoration: _inputDecoration(
-                          hint: 'John Doe',
-                          icon: Icons.person_outline_rounded,
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
 
-                      // Email
-                      Row(
-                        children: [
-                          const Text(
-                            'EMAIL ADDRESS',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF64748B),
-                              letterSpacing: 0.8,
+                      _buildSectionHeader('PERSONAL PROFILE'),
+                      _buildCategoryCard([
+                        // Full Name
+                        Row(
+                          children: [
+                            const Text(
+                              'FULL NAME',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF64748B),
+                                letterSpacing: 0.8,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '*',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Email is required';
-                          }
-                          if (!RegExp(
-                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                          ).hasMatch(val.trim())) {
-                            return 'Enter a valid email address';
-                          }
-                          return null;
-                        },
-                        decoration: _inputDecoration(
-                          hint: 'john.doe@company.com',
-                          icon: Icons.email_outlined,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Password
-                      Row(
-                        children: [
-                          Text(
-                            _isEditMode ? 'NEW PASSWORD (OPTIONAL)' : 'PASSWORD',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF64748B),
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          if (!_isEditMode) ...[
                             const SizedBox(width: 4),
                             const Text(
                               '*',
@@ -1363,456 +2047,460 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                               ),
                             ),
                           ],
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        validator: (val) {
-                          if (!_isEditMode && (val == null || val.isEmpty)) {
-                            return 'Password is required for registration';
-                          }
-                          if (val != null && val.isNotEmpty && val.length < 6) {
-                            return 'Password must be at least 6 characters';
-                          }
-                          return null;
-                        },
-                        decoration: _inputDecoration(
-                          hint: _isEditMode
-                              ? 'Leave blank to keep current'
-                              : '••••••',
-                          icon: Icons.lock_outline_rounded,
-                          suffix: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              size: 20,
-                              color: const Color(0xFF94A3B8),
-                            ),
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
-                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Date of Birth
-                      const Text(
-                        'DATE OF BIRTH',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF64748B),
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _dobController,
-                        readOnly: true,
-                        onTap: _selectDob,
-                        decoration: _inputDecoration(
-                          hint: 'YYYY-MM-DD',
-                          icon: Icons.cake_outlined,
-                          suffix: const Icon(
-                            Icons.calendar_month_outlined,
-                            size: 20,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ),
-                    ]),
-                    const SizedBox(height: 24),
-
-                    // Category 2: Location & Residence
-                    _buildSectionHeader('LOCATION & RESIDENCE'),
-                    _buildCategoryCard([
-                      // State Dropdown
-                      const Text(
-                        'STATE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF64748B),
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        isExpanded: true,
-                        initialValue: _dropdownState,
-                        decoration: _dropdownDecoration(
-                          icon: Icons.map_outlined,
-                        ),
-                        hint: const Text(
-                          'Select State',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                        items: _indiaStatesAndCities.keys.map((state) {
-                          return DropdownMenuItem<String>(
-                            value: state,
-                            child: Text(
-                              state,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          setState(() {
-                            _dropdownState = val;
-                            if (val == 'Other') {
-                              _isCustomState = true;
-                              _stateController.clear();
-                              // Reset city too
-                              _dropdownCity = null;
-                              _isCustomCity = false;
-                              _cityController.clear();
-                            } else {
-                              _isCustomState = false;
-                              _stateController.text = val ?? '';
-                              // Reset city dropdown selection
-                              _dropdownCity = null;
-                              _isCustomCity = false;
-                              _cityController.clear();
-                            }
-                          });
-                        },
-                      ),
-                      if (_isCustomState) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 6),
                         TextFormField(
-                          controller: _stateController,
+                          controller: _nameController,
                           textCapitalization: TextCapitalization.words,
-                          decoration: _inputDecoration(
-                            hint: 'Enter State Name *',
-                            icon: Icons.edit_location_alt_outlined,
-                          ),
                           validator: (val) => val == null || val.trim().isEmpty
-                              ? 'State name is required'
+                              ? 'Name is required'
                               : null,
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-
-                      // City Dropdown
-                      const Text(
-                        'CITY',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF64748B),
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        isExpanded: true,
-                        initialValue: _dropdownCity,
-                        decoration: _dropdownDecoration(
-                          icon: Icons.location_city_outlined,
-                        ),
-                        hint: Text(
-                          _dropdownState == null
-                              ? 'Select State First'
-                              : 'Select City',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                        items: _dropdownState == null
-                            ? []
-                            : (_indiaStatesAndCities[_dropdownState] ?? ['Other']).map((city) {
-                                return DropdownMenuItem<String>(
-                                  value: city,
-                                  child: Text(
-                                    city,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                        onChanged: _dropdownState == null
-                            ? null
-                            : (val) {
-                                setState(() {
-                                  _dropdownCity = val;
-                                  if (val == 'Other') {
-                                    _isCustomCity = true;
-                                    _cityController.clear();
-                                  } else {
-                                    _isCustomCity = false;
-                                    _cityController.text = val ?? '';
-                                  }
-                                });
-                              },
-                      ),
-                      if (_isCustomCity) ...[
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _cityController,
-                          textCapitalization: TextCapitalization.words,
                           decoration: _inputDecoration(
-                            hint: 'Enter City Name *',
-                            icon: Icons.edit_location_outlined,
+                            hint: 'John Doe',
+                            icon: Icons.person_outline_rounded,
                           ),
-                          validator: (val) => val == null || val.trim().isEmpty
-                              ? 'City name is required'
-                              : null,
                         ),
-                      ],
-                    ]),
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 20),
 
-                    // Category 3: Professional & Environment
-                    _buildSectionHeader('PROFESSIONAL & ENVIRONMENT'),
-                    _buildCategoryCard([
-                      // Role Field
-                      const Text(
-                        'ROLE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF64748B),
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      _getAvailableRoles().length > 1
-                          ? DropdownButtonFormField<String>(
-                              isExpanded: true,
-                              initialValue: _selectedRole,
-                              decoration: _dropdownDecoration(
-                                icon: Icons.person_pin_outlined,
-                              ),
-                              items: _getAvailableRoles().map((role) {
-                                String displayRole = role;
-                                if (role == 'manager') displayRole = 'Manager';
-                                if (role == 'team_leader') displayRole = 'Team Leader';
-                                if (role == 'employee') displayRole = 'Employee';
-                                return DropdownMenuItem<String>(
-                                  value: role,
-                                  child: Text(
-                                    displayRole,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() {
-                                    _selectedRole = val;
-                                  });
-                                }
-                              },
-                            )
-                          : Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.lock_outline_rounded, color: Color(0xFF94A3B8), size: 20),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    _selectedRole == 'manager'
-                                        ? 'Manager'
-                                        : (_selectedRole == 'team_leader' ? 'Team Leader' : 'Employee'),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF64748B),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE2E8F0),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      'LOCKED',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF64748B),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                      const SizedBox(height: 20),
-
-                      // Employee ID
-                      Row(
-                        children: [
-                          const Text(
-                            'EMPLOYEE ID',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF64748B),
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '*',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _employeeIdController,
-                        textCapitalization: TextCapitalization.characters,
-                        validator: (val) => val == null || val.trim().isEmpty
-                            ? 'Employee ID is required'
-                            : null,
-                        decoration: _inputDecoration(
-                          hint: 'EMP1024',
-                          icon: Icons.badge_outlined,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Department
-                      Row(
-                        children: [
-                          const Text(
-                            'DEPARTMENT',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF64748B),
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '*',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedDepartment,
-                        decoration: _dropdownDecoration(
-                          icon: Icons.business_outlined,
-                        ),
-                        hint: const Text(
-                          'Select Department',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                        validator: (val) => val == null || val.trim().isEmpty
-                            ? 'Department is required'
-                            : null,
-                        items: _getDepartmentDropdownItems(),
-                        onChanged: (val) {
-                          setState(() {
-                            _selectedDepartment = val;
-                            _departmentController.text = val ?? '';
-                            if (val?.toLowerCase() == 'marketing') {
-                              _selectedWorkType ??= 'Office Work';
-                            } else {
-                              _selectedWorkType = null;
-                            }
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Assign Team
-                      const Text(
-                        'ASSIGN TO TEAM',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF64748B),
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<int?>(
-                        initialValue: _selectedTeamId,
-                        decoration: _dropdownDecoration(
-                          icon: Icons.groups_outlined,
-                        ),
-                        hint: const Text(
-                          'No Team (Unassigned)',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                        items: [
-                          const DropdownMenuItem<int?>(
-                            value: null,
-                            child: Text(
-                              'No Team (Unassigned)',
+                        // Email
+                        Row(
+                          children: [
+                            const Text(
+                              'EMAIL ADDRESS',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF94A3B8),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF64748B),
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              '*',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Email is required';
+                            }
+                            if (!RegExp(
+                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                            ).hasMatch(val.trim())) {
+                              return 'Enter a valid email address';
+                            }
+                            return null;
+                          },
+                          decoration: _inputDecoration(
+                            hint: 'john.doe@company.com',
+                            icon: Icons.email_outlined,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Password
+                        Row(
+                          children: [
+                            Text(
+                              _isEditMode
+                                  ? 'NEW PASSWORD (OPTIONAL)'
+                                  : 'PASSWORD',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF64748B),
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            if (!_isEditMode) ...[
+                              const SizedBox(width: 4),
+                              const Text(
+                                '*',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          validator: (val) {
+                            if (!_isEditMode && (val == null || val.isEmpty)) {
+                              return 'Password is required for registration';
+                            }
+                            if (val != null &&
+                                val.isNotEmpty &&
+                                val.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                          decoration: _inputDecoration(
+                            hint: _isEditMode
+                                ? 'Leave blank to keep current'
+                                : '••••••',
+                            icon: Icons.lock_outline_rounded,
+                            suffix: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                size: 20,
+                                color: const Color(0xFF94A3B8),
+                              ),
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
                               ),
                             ),
                           ),
-                          ...teams.map((team) {
-                            return DropdownMenuItem<int?>(
-                              value: team['id'],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Date of Birth
+                        const Text(
+                          'DATE OF BIRTH',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: _dobController,
+                          readOnly: true,
+                          onTap: _selectDob,
+                          decoration: _inputDecoration(
+                            hint: 'YYYY-MM-DD',
+                            icon: Icons.cake_outlined,
+                            suffix: const Icon(
+                              Icons.calendar_month_outlined,
+                              size: 20,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                      ]),
+                    ],
+
+                    if (_currentStep == 1) ...[
+                      // Step 2: Location & Residence Details
+                      _buildSectionHeader('LOCATION & RESIDENCE'),
+                      _buildCategoryCard([
+                        // State Dropdown
+                        const Text(
+                          'STATE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String>(
+                          isExpanded: true,
+                          initialValue: _dropdownState,
+                          decoration: _dropdownDecoration(
+                            icon: Icons.map_outlined,
+                          ),
+                          hint: const Text(
+                            'Select State',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                          items: _indiaStatesAndCities.keys.map((state) {
+                            return DropdownMenuItem<String>(
+                              value: state,
                               child: Text(
-                                team['name'],
+                                state,
                                 style: const TextStyle(
                                   fontSize: 14,
                                   color: Color(0xFF0F172A),
                                 ),
                               ),
                             );
-                          }),
+                          }).toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              _dropdownState = val;
+                              if (val == 'Other') {
+                                _isCustomState = true;
+                                _stateController.clear();
+                                _dropdownCity = null;
+                                _isCustomCity = false;
+                                _cityController.clear();
+                              } else {
+                                _isCustomState = false;
+                                _stateController.text = val ?? '';
+                                _dropdownCity = null;
+                                _isCustomCity = false;
+                                _cityController.clear();
+                              }
+                            });
+                          },
+                        ),
+                        if (_isCustomState) ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _stateController,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: _inputDecoration(
+                              hint: 'Enter State Name *',
+                              icon: Icons.edit_location_alt_outlined,
+                            ),
+                            validator: (val) =>
+                                val == null || val.trim().isEmpty
+                                ? 'State name is required'
+                                : null,
+                          ),
                         ],
-                        onChanged: (val) {
-                          setState(() => _selectedTeamId = val);
-                        },
-                      ),
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                      // Marketing Work Type (Conditionally Shown)
-                      if (_departmentController.text.trim().toLowerCase() ==
-                          'marketing') ...[
+                        // City Dropdown
+                        const Text(
+                          'CITY',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String>(
+                          key: ValueKey(_dropdownState),
+                          isExpanded: true,
+                          initialValue: _dropdownCity,
+                          decoration: _dropdownDecoration(
+                            icon: Icons.location_city_outlined,
+                          ),
+                          hint: Text(
+                            _dropdownState == null
+                                ? 'Select State First'
+                                : 'Select City',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                          items: _dropdownState == null
+                              ? []
+                              : (_indiaStatesAndCities[_dropdownState] ??
+                                        ['Other'])
+                                    .map((city) {
+                                      return DropdownMenuItem<String>(
+                                        value: city,
+                                        child: Text(
+                                          city,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                      );
+                                    })
+                                    .toList(),
+                          onChanged: _dropdownState == null
+                              ? null
+                              : (val) {
+                                  setState(() {
+                                    _dropdownCity = val;
+                                    if (val == 'Other') {
+                                      _isCustomCity = true;
+                                      _cityController.clear();
+                                    } else {
+                                      _isCustomCity = false;
+                                      _cityController.text = val ?? '';
+                                    }
+                                  });
+                                },
+                        ),
+                        if (_isCustomCity) ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _cityController,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: _inputDecoration(
+                              hint: 'Enter City Name *',
+                              icon: Icons.edit_location_outlined,
+                            ),
+                            validator: (val) =>
+                                val == null || val.trim().isEmpty
+                                ? 'City name is required'
+                                : null,
+                          ),
+                        ],
+                      ]),
+                    ],
+
+                    if (_currentStep == 2) ...[
+                      // Step 3: Professional Employment Info
+                      _buildSectionHeader('PROFESSIONAL & ENVIRONMENT'),
+                      _buildCategoryCard([
+                        // Role Field
+                        const Text(
+                          'ROLE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        _getAvailableRoles().length > 1
+                            ? DropdownButtonFormField<String>(
+                                isExpanded: true,
+                                initialValue: _selectedRole,
+                                decoration: _dropdownDecoration(
+                                  icon: Icons.person_pin_outlined,
+                                ),
+                                items: _getAvailableRoles().map((role) {
+                                  String displayRole = role;
+                                  if (role == 'manager') {
+                                    displayRole = 'Manager';
+                                  }
+                                  if (role == 'team_leader') {
+                                    displayRole = 'Team Leader';
+                                  }
+                                  if (role == 'employee') {
+                                    displayRole = 'Employee';
+                                  }
+                                  return DropdownMenuItem<String>(
+                                    value: role,
+                                    child: Text(
+                                      displayRole,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() {
+                                      _selectedRole = val;
+                                    });
+                                  }
+                                },
+                              )
+                            : Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.lock_outline_rounded,
+                                      color: Color(0xFF94A3B8),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      _selectedRole == 'manager'
+                                          ? 'Manager'
+                                          : (_selectedRole == 'team_leader'
+                                                ? 'Team Leader'
+                                                : 'Employee'),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF64748B),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE2E8F0),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'LOCKED',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                        const SizedBox(height: 20),
+
+                        // Employee ID
                         Row(
                           children: [
                             const Text(
-                              'WORK TYPE',
+                              'EMPLOYEE ID',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF64748B),
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              '*',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: _employeeIdController,
+                          textCapitalization: TextCapitalization.characters,
+                          validator: (val) => val == null || val.trim().isEmpty
+                              ? 'Employee ID is required'
+                              : null,
+                          decoration: _inputDecoration(
+                            hint: 'EMP1024',
+                            icon: Icons.badge_outlined,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Department
+                        Row(
+                          children: [
+                            const Text(
+                              'DEPARTMENT',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
@@ -1833,39 +2521,38 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                         ),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
-                          initialValue: _selectedWorkType ?? 'Office Work',
+                          initialValue: _selectedDepartment,
                           decoration: _dropdownDecoration(
-                            icon: Icons.directions_run_outlined,
+                            icon: Icons.business_outlined,
                           ),
-                          items: _workTypes.map((type) {
-                            return DropdownMenuItem<String>(
-                              value: type,
-                              child: Text(
-                                type,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                          hint: const Text(
+                            'Select Department',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty
+                              ? 'Department is required'
+                              : null,
+                          items: _getDepartmentDropdownItems(),
                           onChanged: (val) {
                             setState(() {
-                              _selectedWorkType = val;
+                              _selectedDepartment = val;
+                              _departmentController.text = val ?? '';
+                              if (val?.toLowerCase() == 'marketing') {
+                                _selectedWorkType ??= 'Office Work';
+                              } else {
+                                _selectedWorkType = null;
+                              }
                             });
                           },
                         ),
                         const SizedBox(height: 20),
-                      ],
 
-                      // Work Mode (Hidden for Marketing employees with Field Work or Office+Field work)
-                      if (!(_departmentController.text.trim().toLowerCase() ==
-                              'marketing' &&
-                          (_selectedWorkType == 'Field Work' ||
-                              _selectedWorkType == 'Office+Field work' ||
-                              _selectedWorkType == 'Office + Field Work'))) ...[
+                        // Assign Team
                         const Text(
-                          'WORK MODE',
+                          'ASSIGN TO TEAM',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
@@ -1874,61 +2561,236 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        DropdownButtonFormField<String>(
-                          initialValue: _selectedWorkMode,
+                        DropdownButtonFormField<int?>(
+                          initialValue: _selectedTeamId,
                           decoration: _dropdownDecoration(
-                            icon: Icons.location_on_outlined,
+                            icon: Icons.groups_outlined,
                           ),
-                          items: _workModes.map((mode) {
-                            return DropdownMenuItem<String>(
-                              value: mode,
+                          hint: const Text(
+                            'No Team (Unassigned)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                          items: [
+                            const DropdownMenuItem<int?>(
+                              value: null,
                               child: Text(
-                                mode,
-                                style: const TextStyle(
+                                'No Team (Unassigned)',
+                                style: TextStyle(
                                   fontSize: 14,
-                                  color: Color(0xFF0F172A),
+                                  color: Color(0xFF94A3B8),
                                 ),
                               ),
-                            );
-                          }).toList(),
+                            ),
+                            ...teams.map((team) {
+                              return DropdownMenuItem<int?>(
+                                value: team['id'],
+                                child: Text(
+                                  team['name'],
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
                           onChanged: (val) {
-                            if (val != null) {
-                              setState(() => _selectedWorkMode = val);
-                            }
+                            setState(() => _selectedTeamId = val);
                           },
                         ),
-                      ],
-                    ]),
+                        const SizedBox(height: 20),
+
+                        // Marketing Work Type (Conditionally Shown)
+                        if (_departmentController.text.trim().toLowerCase() ==
+                            'marketing') ...[
+                          Row(
+                            children: [
+                              const Text(
+                                'WORK TYPE',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF64748B),
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                '*',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedWorkType ?? 'Office Work',
+                            decoration: _dropdownDecoration(
+                              icon: Icons.directions_run_outlined,
+                            ),
+                            items: _workTypes.map((type) {
+                              return DropdownMenuItem<String>(
+                                value: type,
+                                child: Text(
+                                  type,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedWorkType = val;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+
+                        // Work Mode (Hidden for Marketing employees with Field Work or Office+Field work)
+                        if (!(_departmentController.text.trim().toLowerCase() ==
+                                'marketing' &&
+                            (_selectedWorkType == 'Field Work' ||
+                                _selectedWorkType == 'Office+Field work' ||
+                                _selectedWorkType ==
+                                    'Office + Field Work'))) ...[
+                          const Text(
+                            'WORK MODE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF64748B),
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedWorkMode,
+                            decoration: _dropdownDecoration(
+                              icon: Icons.location_on_outlined,
+                            ),
+                            items: _workModes.map((mode) {
+                              return DropdownMenuItem<String>(
+                                value: mode,
+                                child: Text(
+                                  mode,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() => _selectedWorkMode = val);
+                              }
+                            },
+                          ),
+                        ],
+                      ]),
+                    ],
+
                     const SizedBox(height: 36),
 
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _submitForm,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
-                          shadowColor: const Color(
-                            0xFF2563EB,
-                          ).withValues(alpha: 0.3),
-                          elevation: 6,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                    // Navigation Buttons
+                    Row(
+                      children: [
+                        if (_currentStep > 0) ...[
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _currentStep--;
+                                });
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF2563EB),
+                                side: const BorderSide(
+                                  color: Color(0xFF2563EB),
+                                  width: 1.5,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: const Text(
+                                'Back',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                if (_currentStep < 2) {
+                                  setState(() {
+                                    _currentStep++;
+                                  });
+                                } else {
+                                  _submitForm();
+                                }
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2563EB),
+                              shadowColor: const Color(
+                                0xFF2563EB,
+                              ).withValues(alpha: 0.3),
+                              elevation: 6,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _currentStep < 2
+                                      ? 'Next Step'
+                                      : (_isEditMode
+                                            ? 'Save Changes'
+                                            : 'Register Employee'),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                if (_currentStep < 2) ...[
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
-                        child: Text(
-                          _isEditMode
-                              ? 'Save Profile Changes'
-                              : 'Register New Account',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
+                      ],
                     ),
                     const SizedBox(height: 40),
                   ],

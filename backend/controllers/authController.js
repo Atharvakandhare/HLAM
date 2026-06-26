@@ -3,8 +3,8 @@ const jwt = require('jsonwebtoken');
 const { User, Company, Team, CompanySetting } = require('../associations');
 const { sendOtpEmail } = require('../services/mailService');
 
-const generateToken = (userId) =>
-  jwt.sign({ id: userId }, process.env.JWT_SECRET || 'dev-secret', {
+const generateToken = (userId, deviceId = null) =>
+  jwt.sign({ id: userId, deviceId }, process.env.JWT_SECRET || 'dev-secret', {
     expiresIn: process.env.JWT_EXPIRES_IN || '35d',
   });
 
@@ -228,7 +228,7 @@ const registerCompany = async (req, res) => {
 // Login user (supports email or employeeId)
 const login = async (req, res) => {
   try {
-    const { email, employeeId, password } = req.body;
+    const { email, employeeId, password, deviceId } = req.body;
     const identifier = email || employeeId;
 
     if (!identifier || !password) {
@@ -269,7 +269,22 @@ const login = async (req, res) => {
       }
     }
 
-    const token = generateToken(user.id);
+    // Single-device session check (only enforced for non-admin roles: employee, manager, team leader)
+    const needsDeviceSession = ['employee', 'manager', 'team_leader'].includes(user.role);
+    if (needsDeviceSession) {
+      if (!deviceId) {
+        return res.status(400).json({ message: 'Device ID is required for login.' });
+      }
+      if (user.currentDeviceId && user.currentDeviceId !== deviceId) {
+        return res.status(403).json({
+          message: 'This account is already active on another device. Please log out from that device first or contact your administrator.'
+        });
+      }
+      user.currentDeviceId = deviceId;
+      await user.save();
+    }
+
+    const token = generateToken(user.id, deviceId);
     const userResponse = await getUserProfileResponse(user.id);
     return res.json({
       message: 'Login successful',
@@ -292,9 +307,17 @@ const me = async (req, res) => {
   }
 };
 
-// Logout (stateless JWT) - client should discard token
-const logout = async (_req, res) => {
-  return res.json({ message: 'Logged out (client-side token discarded)' });
+// Logout (clears currentDeviceId)
+const logout = async (req, res) => {
+  try {
+    if (req.user) {
+      req.user.currentDeviceId = null;
+      await req.user.save();
+    }
+    return res.json({ message: 'Logout successful' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Logout failed', error: error.message });
+  }
 };
 
 // Refresh token (stateless simple re-issue)
@@ -511,6 +534,31 @@ const updateFcmToken = async (req, res) => {
   }
 };
 
+const updateProfile = async (req, res) => {
+  try {
+    const { name, dob, state, city } = req.body;
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (name !== undefined) user.name = name;
+    if (dob !== undefined) user.dob = dob || null;
+    if (state !== undefined) user.state = state || null;
+    if (city !== undefined) user.city = city || null;
+
+    await user.save();
+
+    const userResponse = await getUserProfileResponse(user.id);
+    return res.json({
+      message: 'Profile updated successfully',
+      user: userResponse,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to update profile', error: error.message });
+  }
+};
+
 module.exports = {
   register,
   registerCompany,
@@ -525,5 +573,6 @@ module.exports = {
   verifyOtp,
   resetPassword,
   updateFcmToken,
+  updateProfile,
 };
 

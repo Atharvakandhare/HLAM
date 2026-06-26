@@ -1586,6 +1586,56 @@ const listShifts = async (req, res) => {
   }
 };
 
+// Reset User Session (forces user to log out on next API call / allows login on new device)
+const resetSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const creatorRole = req.user.role;
+    let allowed = false;
+
+    if (creatorRole === 'system_admin') {
+      if (user.companyId === req.user.companyId || user.role === 'company_admin') {
+        allowed = true;
+      }
+    } else if (creatorRole === 'company_admin') {
+      if (user.companyId === req.user.companyId) {
+        allowed = true;
+      }
+    } else if (creatorRole === 'manager' || creatorRole === 'team_leader') {
+      const managedTeams = await Team.findAll({
+        where: {
+          [Op.or]: [
+            { managerId: req.user.id },
+            { teamLeaderId: req.user.id }
+          ]
+        },
+        attributes: ['id']
+      });
+      const managedTeamIds = managedTeams.map(t => t.id);
+      const isTeamMember = user.teamId && managedTeamIds.includes(user.teamId);
+      if (user.companyId === req.user.companyId && isTeamMember) {
+        allowed = true;
+      }
+    }
+
+    if (!allowed) {
+      return res.status(403).json({ message: 'Unauthorized to reset this user\'s session' });
+    }
+
+    user.currentDeviceId = null;
+    await user.save();
+
+    return res.json({ message: 'User session reset successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to reset session', error: error.message });
+  }
+};
+
 module.exports = {
   listUsers,
   createUser,
@@ -1611,4 +1661,5 @@ module.exports = {
   deleteShift,
   assignShift,
   listShifts,
+  resetSession,
 };

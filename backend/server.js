@@ -128,6 +128,36 @@ const startServer = async () => {
         console.log('ℹ️ attendances status enum alteration skipped or table does not exist yet.');
     }
 
+    // Convert database and tables to utf8mb4 to support Unicode (e.g., Hindi addresses/emojis)
+    try {
+        const dbName = sequelize.config.database;
+        await sequelize.query(`ALTER DATABASE \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+        console.log(`✅ Altered database \`${dbName}\` character set to utf8mb4.`);
+    } catch (err) {
+        console.log('ℹ️ Altering database character set failed:', err.message);
+    }
+
+    try {
+        await sequelize.query("ALTER TABLE attendances CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+        console.log('✅ Converted attendances table to utf8mb4 successfully.');
+    } catch (err) {
+        console.log('ℹ️ Converting attendances table to utf8mb4 skipped or failed:', err.message);
+    }
+
+    try {
+        await sequelize.query("ALTER TABLE location_logs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+        console.log('✅ Converted location_logs table to utf8mb4 successfully.');
+    } catch (err) {
+        console.log('ℹ️ Converting location_logs table to utf8mb4 skipped or failed:', err.message);
+    }
+
+    try {
+        await sequelize.query("ALTER TABLE users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+        console.log('✅ Converted users table to utf8mb4 successfully.');
+    } catch (err) {
+        console.log('ℹ️ Converting users table to utf8mb4 skipped or failed:', err.message);
+    }
+
     // Sync models with database with retry logic
     const forceSync = process.env.DB_SYNC_FORCE === 'true';
     let synced = false;

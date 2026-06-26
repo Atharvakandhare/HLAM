@@ -12,7 +12,8 @@ const {
   forgotPassword,
   verifyOtp,
   resetPassword,
-  updateFcmToken
+  updateFcmToken,
+  updateProfile
 } = require('../controllers/authController');
 const { authMiddleware } = require('../middleware/auth');
 
@@ -28,6 +29,7 @@ router.post('/change-password', authMiddleware, changePassword);
 router.post('/profile-picture', authMiddleware, updateProfilePicture);
 router.post('/profile-picture/delete', authMiddleware, deleteProfilePicture);
 router.post('/fcm-token', authMiddleware, updateFcmToken);
+router.put('/profile', authMiddleware, updateProfile);
 
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-otp', verifyOtp);

@@ -23,6 +23,7 @@ const {
   updateShift,
   deleteShift,
   assignShift,
+  resetSession,
 } = require('../controllers/adminController');
 const { authMiddleware, systemAdminOnly, companyAdminOnly, approverOnly } = require('../middleware/auth');
 
@@ -86,6 +87,7 @@ router.get('/users', listUsers); // Available to all authenticated users to fetc
 router.post('/users', approverOnly, createUser);
 router.post('/users/:id', approverOnly, updateUser);
 router.post('/users/:id/delete', approverOnly, deleteUser);
+router.post('/users/:id/reset-session', approverOnly, resetSession);
 
 // Attendance stats and reports (System Admin, Company Admin, Manager, Team Leader)
 router.get('/attendance/stats', approverOnly, attendanceStats);

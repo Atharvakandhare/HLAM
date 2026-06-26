@@ -103,6 +103,11 @@ const User = sequelize.define(
       allowNull: true,
       field: 'fcm_token',
     },
+    currentDeviceId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'current_device_id',
+    },
   },
   {
     tableName: 'users',

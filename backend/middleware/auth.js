@@ -16,6 +16,14 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found or inactive' });
     }
 
+    // Verify session device ID for non-admin roles
+    const checksDeviceSession = ['employee', 'manager', 'team_leader'].includes(user.role);
+    if (checksDeviceSession) {
+      if (!user.currentDeviceId || user.currentDeviceId !== decoded.deviceId) {
+        return res.status(401).json({ message: 'Session invalid or active on another device. Please log in again.' });
+      }
+    }
+
     if (user.companyId) {
       const { Company } = require('../associations');
       const company = await Company.findByPk(user.companyId);

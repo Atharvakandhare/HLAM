@@ -9,7 +9,11 @@ class AuthService {
 
   Future<User> login(String identifier, String password) async {
     final isEmail = identifier.contains('@');
-    final Map<String, dynamic> body = {'password': password};
+    final deviceId = await _api.getOrCreateDeviceId();
+    final Map<String, dynamic> body = {
+      'password': password,
+      'deviceId': deviceId,
+    };
 
     if (isEmail) {
       body['email'] = identifier;

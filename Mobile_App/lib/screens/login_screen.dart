@@ -63,7 +63,36 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        AppMessages.showError(context, e.toString());
+        final errMsg = e.toString();
+        if (errMsg.contains('already active on another device') || errMsg.contains('another device')) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                  SizedBox(width: 10),
+                  Text('Session Conflict', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                ],
+              ),
+              content: const Text(
+                'This account is already logged in on another device.\n\n'
+                'To secure your account, we only allow one active session at a time. '
+                'Please log out from your other device, or ask your company administrator to reset your session.',
+                style: TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF334155)),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                ),
+              ],
+            ),
+          );
+        } else {
+          AppMessages.showError(context, errMsg);
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

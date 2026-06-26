@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'api_service.dart';
+import 'reminder_alarm_service.dart';
 
 class LocationTrackingService {
   static Future<void> initializeService() async {
@@ -15,6 +16,14 @@ class LocationTrackingService {
       debugPrint("Skipping Background Location Service Initialization on Web.");
       return;
     }
+    
+    // Ensure notifications and channels are initialized
+    try {
+      await ReminderAlarmService.init();
+    } catch (e) {
+      debugPrint("LocationTrackingService: Failed to init ReminderAlarmService: $e");
+    }
+
     final service = FlutterBackgroundService();
 
     await service.configure(

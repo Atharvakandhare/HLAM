@@ -51,6 +51,7 @@ class ReminderAlarmService {
         _notificationsPlugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     if (androidPlatform != null) {
+      // 1. Create main reminder alarm channel
       await androidPlatform.createNotificationChannel(
         const AndroidNotificationChannel(
           channelId,
@@ -62,13 +63,36 @@ class ReminderAlarmService {
               'mixkit_digital_clock_digital_alarm_buzzer_992'),
         ),
       );
+
+      // 2. Create background tracking channel (to prevent bad notification config crashes)
+      try {
+        await androidPlatform.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'marketing_tracking_channel',
+            'Marketing Location Tracking',
+            description: 'Tracking active field movements...',
+            importance: Importance.low,
+            playSound: false,
+          ),
+        );
+      } catch (e) {
+        debugPrint("ReminderAlarmService: Error creating background tracking channel: $e");
+      }
       
-      // Request permission on startup (Android 13+)
-      await androidPlatform.requestNotificationsPermission();
+      // Request notification permission on startup (Android 13+)
+      try {
+        await androidPlatform.requestNotificationsPermission();
+      } catch (e) {
+        debugPrint("ReminderAlarmService: Error requesting notification permission: $e");
+      }
       
-      final bool? canScheduleExact = await androidPlatform.canScheduleExactNotifications();
-      if (canScheduleExact == false) {
-        await androidPlatform.requestExactAlarmsPermission();
+      try {
+        final bool? canScheduleExact = await androidPlatform.canScheduleExactNotifications();
+        if (canScheduleExact == false) {
+          await androidPlatform.requestExactAlarmsPermission();
+        }
+      } catch (e) {
+        debugPrint("ReminderAlarmService: Error checking/requesting exact alarm permission: $e");
       }
     }
 
@@ -234,7 +258,25 @@ class ReminderAlarmService {
       );
       debugPrint("ReminderAlarmService: Scheduled alarm $id at $tzScheduledTime using mode ${scheduleMode.name}");
     } catch (e) {
-      debugPrint("ReminderAlarmService: Error scheduling alarm $id: $e");
+      debugPrint("ReminderAlarmService: Error scheduling alarm $id with mode ${scheduleMode.name}: $e");
+      if (scheduleMode == AndroidScheduleMode.exactAllowWhileIdle) {
+        debugPrint("ReminderAlarmService: Retrying scheduling with inexact mode...");
+        try {
+          await _notificationsPlugin.zonedSchedule(
+            id,
+            title,
+            body,
+            tzScheduledTime,
+            details,
+            androidScheduleMode: AndroidScheduleMode.inexact,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+          );
+          debugPrint("ReminderAlarmService: Successfully scheduled alarm $id at $tzScheduledTime using inexact mode fallback");
+        } catch (retryError) {
+          debugPrint("ReminderAlarmService: Critical error during fallback scheduling: $retryError");
+        }
+      }
     }
   }
 
