@@ -929,6 +929,105 @@ const sendCompanyRejectionEmail = async ({ adminName, adminEmail, companyName, r
     }
 };
 
+const sendPasswordResetSuccessEmail = async ({ name, email, newPassword }) => {
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Reset Completed – HLAM</title>
+    </head>
+    <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#fcfcfc;color:#1e293b;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;margin:24px auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 12px 32px -4px rgba(0,0,0,0.1);border:1px solid #e2e8f0;">
+
+            <!-- Header -->
+            <tr>
+                <td style="background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 60%,#1e3a8a 100%);padding:44px 32px;text-align:center;">
+                    <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#93c5fd;text-transform:uppercase;letter-spacing:1.5px;">HLAM – Hirelyft Attendance Management</p>
+                    <h1 style="color:#ffffff;margin:0;font-size:25px;font-weight:900;letter-spacing:-0.5px;">🔒 Password Changed Successfully</h1>
+                    <p style="color:#93c5fd;margin:10px 0 0;font-size:14px;font-weight:500;">Your account password has been updated</p>
+                </td>
+            </tr>
+
+            <!-- Greeting -->
+            <tr>
+                <td style="padding:30px 32px 20px;">
+                    <p style="font-size:17px;font-weight:700;color:#0f172a;margin:0;">Hi ${name},</p>
+                    <p style="font-size:14px;color:#475569;line-height:1.7;margin:12px 0 0;">
+                        This email confirms that you have successfully changed your password for your HLAM account. 
+                        Below are your credentials to log in:
+                    </p>
+                </td>
+            </tr>
+
+            <!-- Credentials Box -->
+            <tr>
+                <td style="padding:0 32px 30px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;border-radius:14px;border:1px solid #e2e8f0;">
+                        <tr>
+                            <td style="padding:22px;">
+                                <h3 style="margin:0 0 16px;color:#1e3a8a;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">🔑 Login Credentials</h3>
+                                <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
+                                    <tr>
+                                        <td style="padding:7px 0;color:#64748b;font-weight:600;width:120px;">Email:</td>
+                                        <td style="padding:7px 0;color:#0f172a;font-weight:700;">${email}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:7px 0;color:#64748b;font-weight:600;">New Password:</td>
+                                        <td style="padding:7px 0;color:#0f172a;font-weight:700;font-family:monospace;font-size:14px;letter-spacing:1px;">${newPassword}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Caution Notice -->
+            <tr>
+                <td style="padding:0 32px 30px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border-radius:12px;border:1px solid #fef3c7;">
+                        <tr>
+                            <td style="padding:16px 20px;">
+                                <p style="margin:0;font-size:13px;color:#b45309;font-weight:500;line-height:1.5;">
+                                    ⚠️ <strong>Security Advisory:</strong> If you did not request this password change, please contact your HLAM administrator or support team immediately to secure your account.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td style="background:#f8fafc;padding:24px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+                    <p style="margin:0 0 4px;font-size:11px;color:#94a3b8;font-weight:600;">HLAM – Hirelyft Attendance Management Portal</p>
+                    <p style="margin:0;font-size:11px;color:#94a3b8;">This is an automated security notification. Please do not reply directly to this email.</p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    `;
+
+    const mailOptions = {
+        from: '"HLAM – Hirelyft Attendance Management" <atharva.kandhare@hirelyft.in>',
+        to: email,
+        subject: `Your HLAM Account Password Has Been Reset Successfully`,
+        html: htmlContent,
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[Mail Service] Password reset confirmation email sent to ${email}. MessageId: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error(`[Mail Service] Failed to send password reset confirmation email to ${email}:`, error.message);
+        return { success: false, error: error.message };
+    }
+};
+
 module.exports = {
     sendCompanyAdminWelcomeEmail,
     sendWelcomeEmail,
@@ -936,4 +1035,6 @@ module.exports = {
     sendOtpEmail,
     sendCompanyApprovalEmail,
     sendCompanyRejectionEmail,
+    sendPasswordResetSuccessEmail,
 };
+

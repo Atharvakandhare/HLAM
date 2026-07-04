@@ -26,6 +26,10 @@ const holidaysUploadDir = path.join(__dirname, 'uploads', 'holidays');
 if (!fs.existsSync(holidaysUploadDir)) {
     fs.mkdirSync(holidaysUploadDir, { recursive: true });
 }
+const facesUploadDir = path.join(__dirname, 'uploads', 'faces');
+if (!fs.existsSync(facesUploadDir)) {
+    fs.mkdirSync(facesUploadDir, { recursive: true });
+}
 
 // Simple Request Logger
 app.use((req, res, next) => {

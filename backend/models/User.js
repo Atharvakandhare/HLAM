@@ -108,6 +108,11 @@ const User = sequelize.define(
       allowNull: true,
       field: 'current_device_id',
     },
+    faceDescriptor: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      field: 'face_descriptor',
+    },
   },
   {
     tableName: 'users',

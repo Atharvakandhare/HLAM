@@ -1,4 +1,4 @@
-const { Attendance, Shift, User, CompanySetting } = require('../associations');
+const { Attendance, Shift, User, Company, CompanySetting } = require('../associations');
 const { Op } = require('sequelize');
 
 // Helper to get local date string YYYY-MM-DD
@@ -233,13 +233,13 @@ const sendReminderNotifications = async () => {
 
           if (targetCheckInTime) {
             const checkInMs = getTimeMs(targetCheckInTime);
-            // Remind 15 minutes before the check-in time
-            const remindStartMs = checkInMs - 15 * 60 * 1000;
-            if (currentMs >= remindStartMs && currentMs < checkInMs) {
+            // Remind after the check-in time has passed (meaning they missed it, up to 45 mins)
+            const remindEndMs = checkInMs + 45 * 60 * 1000;
+            if (currentMs >= checkInMs && currentMs <= remindEndMs) {
               await sendPush(
                 user.fcmToken,
-                "Check-In Reminder ⏰",
-                `Hi ${user.name}, your shift starts soon. Don't forget to check in!`
+                "Attendance Alert",
+                "Reminder!!! Please Check-In, according to the time."
               );
               sentReminders.checkIn[user.id] = todayStr;
             }
@@ -297,8 +297,20 @@ const sendPush = async (token, title, body) => {
     const message = {
       notification: { title, body },
       token: token,
-      android: { priority: 'high' },
-      apns: { payload: { aps: { contentAvailable: true } } }
+      android: {
+        priority: 'high',
+        notification: {
+          channelId: 'attendance_reminder_channel_v2'
+        }
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'mixkit_digital_clock_digital_alarm_buzzer_992.wav',
+            contentAvailable: true
+          }
+        }
+      }
     };
     await admin.messaging().send(message);
     console.log(`[Scheduler] Push notification sent to token ${token.substring(0, 15)}...`);

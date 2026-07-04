@@ -1,4 +1,4 @@
-const { User, Attendance, Company, Team, CompanySetting, Shift } = require('../associations');
+const { User, Attendance, Company, Team, CompanySetting, Shift, Holiday, Leave } = require('../associations');
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const { sendWelcomeEmail, sendCompanyAdminWelcomeEmail } = require('../services/mailService');
@@ -579,7 +579,6 @@ const exportReport = async (req, res) => {
 
     const userWhere = {};
     if (creatorRole === 'system_admin') {
-      // system_admin only exports reports for their own company
       userWhere.companyId = companyId;
     } else if (creatorRole === 'company_admin') {
       userWhere.companyId = companyId;
@@ -623,47 +622,192 @@ const exportReport = async (req, res) => {
       userWhere.id = userId;
     }
 
-    const matchedUsers = await User.findAll({ where: userWhere, attributes: ['id'] });
+    const matchedUsers = await User.findAll({
+      where: userWhere,
+      attributes: ['id', 'name', 'email', 'department'],
+      order: [['name', 'ASC']]
+    });
     const userIds = matchedUsers.map(u => u.id);
 
-    if (userIds.length === 0) {
+    // Parse timezone-safe date range
+    const parseLocalDate = (dateStr, isEnd = false) => {
+      if (!dateStr) {
+        const now = new Date();
+        return isEnd ? new Date(now.getFullYear(), now.getMonth() + 1, 0) : new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    };
+
+    const startDt = parseLocalDate(startDate, false);
+    const endDt = parseLocalDate(endDate, true);
+
+    const dates = [];
+    let curr = new Date(startDt);
+    while (curr <= endDt) {
+      const yyyy = curr.getFullYear();
+      const mm = String(curr.getMonth() + 1).padStart(2, '0');
+      const dd = String(curr.getDate()).padStart(2, '0');
+      dates.push(`${yyyy}-${mm}-${dd}`);
+      curr.setDate(curr.getDate() + 1);
+    }
+
+    if (userIds.length === 0 || dates.length === 0) {
+      const headerParts = ['Name', 'Email', 'Department', 'Total Working Hours', 'Total Overtime'];
+      for (let i = 0; i < dates.length; i++) {
+        headerParts.push((i + 1).toString(), `${i + 1} Sessions`);
+      }
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename="attendance.csv"');
-      return res.send('Name,Email,Date,CheckIn,CheckOut,Latitude,Longitude,Status,Comments\n');
+      return res.send(headerParts.join(',') + '\n');
     }
 
-    const where = { userId: { [Op.in]: userIds } };
-    if (startDate || endDate) {
-      where.date = {};
-      if (startDate) where.date[Op.gte] = startDate;
-      if (endDate) where.date[Op.lte] = endDate;
-    }
-
+    // Query necessary databases
     const records = await Attendance.findAll({
-      where,
-      include: [{ model: User, as: 'user', attributes: ['name', 'email'] }],
-      order: [['date', 'DESC']],
+      where: {
+        userId: { [Op.in]: userIds },
+        date: { [Op.between]: [dates[0], dates[dates.length - 1]] }
+      }
     });
 
-    const header = 'Name,Email,Date,CheckIn,CheckOut,Latitude,Longitude,Status,Comments\n';
-    const rows = records
-      .map((r) =>
-        [
-          r.user?.name || '',
-          r.user?.email || '',
-          r.date,
-          r.checkInTime ? new Date(r.checkInTime).toISOString() : '',
-          r.checkOutTime ? new Date(r.checkOutTime).toISOString() : '',
-          r.latitude || '',
-          r.longitude || '',
-          r.status || '',
-          (r.taskComments || '').replace(/,/g, ';'),
-        ].join(',')
-      )
-      .join('\n');
+    const holidays = await Holiday.findAll({
+      where: {
+        companyId,
+        date: { [Op.between]: [dates[0], dates[dates.length - 1]] },
+        isActive: true
+      }
+    });
+    const holidayDates = new Set(holidays.map(h => h.date));
+
+    const leaves = await Leave.findAll({
+      where: {
+        userId: { [Op.in]: userIds },
+        status: 'approved',
+        [Op.or]: [
+          { startDate: { [Op.between]: [dates[0], dates[dates.length - 1]] } },
+          { endDate: { [Op.between]: [dates[0], dates[dates.length - 1]] } },
+          {
+            startDate: { [Op.lte]: dates[0] },
+            endDate: { [Op.gte]: dates[dates.length - 1] }
+          }
+        ]
+      }
+    });
+
+    // Build CSV Header
+    const headerParts = ['Name', 'Email', 'Department', 'Total Working Hours', 'Total Overtime'];
+    for (let i = 0; i < dates.length; i++) {
+      headerParts.push((i + 1).toString(), `${i + 1} Sessions`);
+    }
+    const header = headerParts.join(',') + '\n';
+
+    // Build rows for each employee
+    const rows = [];
+    for (const emp of matchedUsers) {
+      let monthlyTotalHours = 0.0;
+      let monthlyOvertimeHours = 0.0;
+
+      const rowParts = [
+        (emp.name || '').replace(/,/g, ';'),
+        (emp.email || '').replace(/,/g, ';'),
+        (emp.department || 'N/A').replace(/,/g, ';'),
+        '', // Placeholder for Total Working Hours
+        ''  // Placeholder for Total Overtime
+      ];
+      const totalHoursIndex = 3;
+      const totalOvertimeIndex = 4;
+
+      for (let i = 0; i < dates.length; i++) {
+        const datePrefix = dates[i];
+        const daySessions = records.filter(r => r.userId === emp.id && r.date === datePrefix);
+
+        const hasApprovedLeave = leaves.some(l => {
+          if (l.userId !== emp.id) return false;
+          return datePrefix >= l.startDate && datePrefix <= l.endDate;
+        });
+
+        const [yr, mn, dy] = datePrefix.split('-').map(Number);
+        const dtObj = new Date(yr, mn - 1, dy);
+        const dayOfWeek = dtObj.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        let status = '';
+        let sessionsText = '';
+
+        if (daySessions.length === 0) {
+          if (hasApprovedLeave) {
+            status = 'L';
+          } else {
+            if (holidayDates.has(datePrefix)) {
+              status = 'H';
+            } else if (isWeekend) {
+              status = 'WE';
+            } else {
+              status = 'AB';
+            }
+          }
+        } else {
+          const hasHalfDay = daySessions.some(s => s.status && s.status.toLowerCase() === 'half_day');
+          status = hasHalfDay ? 'HD' : 'P';
+
+          let dayHours = 0.0;
+          let dayOtHours = 0.0;
+          const sessionIntervals = [];
+
+          for (const s of daySessions) {
+            const formatTime = (dtStr) => {
+              if (!dtStr) return 'N/A';
+              const dt = new Date(dtStr);
+              let hrs = dt.getHours();
+              const mins = String(dt.getMinutes()).padStart(2, '0');
+              const ampm = hrs >= 12 ? 'PM' : 'AM';
+              hrs = hrs % 12;
+              hrs = hrs ? hrs : 12;
+              return `${String(hrs).padStart(2, '0')}:${mins} ${ampm}`;
+            };
+
+            const checkInStr = s.checkInTime ? formatTime(s.checkInTime) : 'N/A';
+            const checkOutStr = s.checkOutTime ? formatTime(s.checkOutTime) : 'Active';
+            sessionIntervals.push(`${checkInStr}-${checkOutStr}`);
+
+            if (s.checkInTime) {
+              const endDt = s.checkOutTime ? new Date(s.checkOutTime) : new Date();
+              const startDt = new Date(s.checkInTime);
+              dayHours += (endDt - startDt) / (1000 * 60 * 60);
+            }
+
+            if (s.overtimeDuration) {
+              const otMatch = s.overtimeDuration.match(/(\d+)\s*h\s*(\d+)\s*m/);
+              if (otMatch) {
+                const h = parseInt(otMatch[1], 10);
+                const m = parseInt(otMatch[2], 10);
+                dayOtHours += h + (m / 60.0);
+              } else {
+                const num = parseFloat(s.overtimeDuration);
+                if (!isNaN(num)) {
+                  dayOtHours += num;
+                }
+              }
+            }
+          }
+
+          sessionsText = `${sessionIntervals.join("; ")} [${dayHours.toFixed(2)} hrs]`;
+          monthlyTotalHours += dayHours;
+          monthlyOvertimeHours += dayOtHours;
+        }
+
+        rowParts.push(status);
+        rowParts.push(`"${sessionsText.replace(/"/g, '""')}"`);
+      }
+
+      rowParts[totalHoursIndex] = `${monthlyTotalHours.toFixed(2)} hrs`;
+      rowParts[totalOvertimeIndex] = `${monthlyOvertimeHours.toFixed(2)} hrs`;
+      rows.push(rowParts.join(','));
+    }
+
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="attendance.csv"');
-    return res.send(header + rows);
+    return res.send(header + rows.join('\n'));
   } catch (error) {
     return res.status(500).json({ message: 'Failed to export report', error: error.message });
   }

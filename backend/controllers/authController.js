@@ -1,7 +1,10 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User, Company, Team, CompanySetting } = require('../associations');
-const { sendOtpEmail } = require('../services/mailService');
+const { sendOtpEmail, sendPasswordResetSuccessEmail } = require('../services/mailService');
+const { getFaceDescriptor } = require('../services/faceService');
+const fs = require('fs');
+const path = require('path');
 
 const generateToken = (userId, deviceId = null) =>
   jwt.sign({ id: userId, deviceId }, process.env.JWT_SECRET || 'dev-secret', {
@@ -68,6 +71,8 @@ const getUserProfileResponse = async (userId) => {
     city: data.city,
     workMode: data.workMode,
     workType: data.workType,
+    isFaceRegistered: !!data.faceDescriptor,
+    faceImageUrl: data.faceDescriptor ? `/uploads/faces/face-registration-${data.id}.jpg` : null,
     company: data.company ? {
       id: data.company.id,
       name: data.company.name,
@@ -515,6 +520,15 @@ const resetPassword = async (req, res) => {
     user.otpExpiresAt = null;
     await user.save();
 
+    // Send email with new password in the background
+    sendPasswordResetSuccessEmail({
+      name: user.name,
+      email: user.email,
+      newPassword: newPassword
+    }).catch((err) => {
+      console.error('[Auth] Error sending password reset confirmation email:', err.message);
+    });
+
     return res.json({ message: 'Password reset completed successfully' });
   } catch (error) {
     console.error('[Auth] Reset password error:', error);
@@ -559,6 +573,65 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const registerFace = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Face selfie image is required' });
+    }
+
+    const tempFilePath = req.file.path;
+
+    // Extract face descriptor embedding
+    const descriptor = await getFaceDescriptor(tempFilePath);
+
+    if (!descriptor) {
+      if (fs.existsSync(tempFilePath)) {
+        try { fs.unlinkSync(tempFilePath); } catch (e) {}
+      }
+      return res.status(400).json({ 
+        message: 'No face detected in the image. Please make sure your face is clearly visible and try again.' 
+      });
+    }
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      if (fs.existsSync(tempFilePath)) {
+        try { fs.unlinkSync(tempFilePath); } catch (e) {}
+      }
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Save 128-float embedding
+    user.faceDescriptor = descriptor;
+    await user.save();
+
+    // Store as permanent reference face image
+    const faceFilename = `face-registration-${user.id}.jpg`;
+    const finalDir = path.join(__dirname, '../uploads/faces');
+    if (!fs.existsSync(finalDir)) {
+      fs.mkdirSync(finalDir, { recursive: true });
+    }
+    const finalPath = path.join(finalDir, faceFilename);
+    
+    // Copy temp image to final reference folder
+    if (fs.existsSync(finalPath)) {
+      fs.unlinkSync(finalPath);
+    }
+    fs.renameSync(tempFilePath, finalPath);
+
+    return res.json({
+      message: 'Face registered successfully',
+      isFaceRegistered: true
+    });
+  } catch (error) {
+    console.error('[Auth] Register face error:', error);
+    if (req.file && fs.existsSync(req.file.path)) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
+    return res.status(500).json({ message: 'Failed to register face', error: error.message });
+  }
+};
+
 module.exports = {
   register,
   registerCompany,
@@ -574,5 +647,6 @@ module.exports = {
   resetPassword,
   updateFcmToken,
   updateProfile,
+  registerFace,
 };
 

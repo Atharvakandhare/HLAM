@@ -1,12 +1,23 @@
 # Dependencies
 node_modules/
 
+# Config secrets
+config/firebase-service-account.json
+
 # Environment variables
 .env
 
 # Uploaded files (keep the directory structure, but ignore actual uploads)
 uploads/selfies/*
 !uploads/selfies/.gitkeep
+uploads/faces/*
+!uploads/faces/.gitkeep
+uploads/profiles/*
+!uploads/profiles/.gitkeep
+uploads/temp/*
+!uploads/temp/.gitkeep
+uploads/holidays/*
+!uploads/holidays/.gitkeep
 
 # Logs
 *.log

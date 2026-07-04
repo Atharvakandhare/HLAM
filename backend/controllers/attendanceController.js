@@ -1,5 +1,8 @@
 const { Attendance, User, CompanySetting, Team, Holiday, HolidayException, Shift } = require('../associations');
 const { Op, Sequelize } = require('sequelize');
+const { getFaceDescriptor, verifyFaceMatch } = require('../services/faceService');
+const fs = require('fs');
+const path = require('path');
 
 // Helper to parse time string "HH:MM:SS" into milliseconds from midnight
 const getTimeMs = (timeStr) => {
@@ -96,6 +99,41 @@ const checkIn = async (req, res) => {
     // Selfie is mandatory
     if (!selfieUrl) {
       return res.status(400).json({ message: 'Live selfie is required for check-in.' });
+    }
+
+    // Face verification for non-admin roles
+    const needsFaceVerification = ['employee', 'manager', 'team_leader'].includes(userRole);
+    if (needsFaceVerification) {
+      const user = await User.findByPk(userId);
+      if (!user || !user.faceDescriptor) {
+        return res.status(400).json({ 
+          message: 'Face verification is required. Please register your face on the profile page first.' 
+        });
+      }
+
+      const localFilePath = path.join(__dirname, '..', selfieUrl);
+      const newDescriptor = await getFaceDescriptor(localFilePath);
+
+      if (!newDescriptor) {
+        if (fs.existsSync(localFilePath)) {
+          try { fs.unlinkSync(localFilePath); } catch (e) {}
+        }
+        return res.status(400).json({ 
+          message: 'No face detected in your check-in selfie. Please make sure your face is clearly visible and try again.' 
+        });
+      }
+
+      const { isMatch, distance } = verifyFaceMatch(user.faceDescriptor, newDescriptor);
+      console.log(`[FaceVerify Check-In] User ID: ${userId}, Distance: ${distance.toFixed(4)}, Match: ${isMatch}`);
+
+      if (!isMatch) {
+        if (fs.existsSync(localFilePath)) {
+          try { fs.unlinkSync(localFilePath); } catch (e) {}
+        }
+        return res.status(403).json({ 
+          message: 'Face verification failed! The captured selfie does not match your registered face profile.' 
+        });
+      }
     }
 
     // Mood is mandatory
@@ -251,6 +289,42 @@ const checkOut = async (req, res) => {
     // Selfie is mandatory
     if (!checkoutSelfieUrl) {
       return res.status(400).json({ message: 'Live selfie is required for check-out.' });
+    }
+
+    // Face verification for non-admin roles
+    const userRole = req.user.role;
+    const needsFaceVerification = ['employee', 'manager', 'team_leader'].includes(userRole);
+    if (needsFaceVerification) {
+      const user = await User.findByPk(userId);
+      if (!user || !user.faceDescriptor) {
+        return res.status(400).json({ 
+          message: 'Face verification is required. Please register your face on the profile page first.' 
+        });
+      }
+
+      const localFilePath = path.join(__dirname, '..', checkoutSelfieUrl);
+      const newDescriptor = await getFaceDescriptor(localFilePath);
+
+      if (!newDescriptor) {
+        if (fs.existsSync(localFilePath)) {
+          try { fs.unlinkSync(localFilePath); } catch (e) {}
+        }
+        return res.status(400).json({ 
+          message: 'No face detected in your check-out selfie. Please make sure your face is clearly visible and try again.' 
+        });
+      }
+
+      const { isMatch, distance } = verifyFaceMatch(user.faceDescriptor, newDescriptor);
+      console.log(`[FaceVerify Check-Out] User ID: ${userId}, Distance: ${distance.toFixed(4)}, Match: ${isMatch}`);
+
+      if (!isMatch) {
+        if (fs.existsSync(localFilePath)) {
+          try { fs.unlinkSync(localFilePath); } catch (e) {}
+        }
+        return res.status(403).json({ 
+          message: 'Face verification failed! The captured selfie does not match your registered face profile.' 
+        });
+      }
     }
 
     // Fetch company settings

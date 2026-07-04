@@ -13,9 +13,11 @@ const {
   verifyOtp,
   resetPassword,
   updateFcmToken,
-  updateProfile
+  updateProfile,
+  registerFace,
 } = require('../controllers/authController');
 const { authMiddleware } = require('../middleware/auth');
+const { upload } = require('../controllers/uploadController');
 
 const router = express.Router();
 
@@ -29,11 +31,13 @@ router.post('/change-password', authMiddleware, changePassword);
 router.post('/profile-picture', authMiddleware, updateProfilePicture);
 router.post('/profile-picture/delete', authMiddleware, deleteProfilePicture);
 router.post('/fcm-token', authMiddleware, updateFcmToken);
-router.put('/profile', authMiddleware, updateProfile);
+router.post('/profile', authMiddleware, updateProfile);
+router.post('/register-face', authMiddleware, upload.single('face'), registerFace);
 
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-otp', verifyOtp);
 router.post('/reset-password', resetPassword);
 
 module.exports = router;
+
 
