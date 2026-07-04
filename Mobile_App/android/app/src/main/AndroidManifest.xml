@@ -84,6 +84,11 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        
+        <!-- Default notification icon for Firebase Cloud Messaging -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_bg_service_small" />
     </application>
 
     <!-- Package visibility queries for Android 11+ (API 30+).

@@ -160,20 +160,20 @@ class _LeaveScreenState extends State<LeaveScreen> {
     final resetDateStr = "$monthName $refreshDay";
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3B82F6).withValues(alpha: 0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -185,30 +185,30 @@ class _LeaveScreenState extends State<LeaveScreen> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 16),
+                  Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 14),
                   SizedBox(width: 6),
                   Text(
                     'PAID LEAVES BALANCE',
                     style: TextStyle(
                       color: Colors.white70,
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
+                      letterSpacing: 1.0,
                     ),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   'Policy: $monthlyPolicy/Mo',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 9,
+                    fontSize: 8.5,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -217,73 +217,76 @@ class _LeaveScreenState extends State<LeaveScreen> {
           ),
           const SizedBox(height: 10),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$availableThisMonth Days',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      '$availableThisMonth Days',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Available This Month',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Available This Month',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Container(
-                height: 30,
+                height: 26,
                 width: 1,
                 color: Colors.white24,
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$availableNextMonth Days',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      '$availableNextMonth Days',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Available Next Month',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Available Next Month',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          const Divider(color: Colors.white24, height: 1),
-          const SizedBox(height: 8),
+          const Divider(color: Colors.white12, height: 1),
+          const SizedBox(height: 6),
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.refresh_rounded, color: Colors.white70, size: 12),
-              const SizedBox(width: 6),
+              const Icon(Icons.info_outline_rounded, color: Colors.white60, size: 11),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   'Leaves will refresh to 0 on $resetDateStr annually.',
                   style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 9.5,
+                    color: Colors.white60,
+                    fontSize: 9,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

@@ -32,7 +32,7 @@ class ReminderAlarmService {
 
     // 2. Setup notification settings
     const AndroidInitializationSettings androidInit =
-        AndroidInitializationSettings('@mipmap/launcher_icon');
+        AndroidInitializationSettings('@drawable/ic_bg_service_small');
 
     const InitializationSettings initSettings = InitializationSettings(
       android: androidInit,
@@ -212,6 +212,7 @@ class ReminderAlarmService {
       sound: const RawResourceAndroidNotificationSound(
           'mixkit_digital_clock_digital_alarm_buzzer_992'),
       playSound: true,
+      largeIcon: const DrawableResourceAndroidBitmap('ic_bg_service_large'),
       additionalFlags: Int32List.fromList(<int>[4]), // Loops audio continuously (FLAG_INSISTENT)
       audioAttributesUsage: AudioAttributesUsage.alarm,
       timeoutAfter: 30000, // Auto dismiss after 30 seconds
@@ -293,6 +294,7 @@ class ReminderAlarmService {
       sound: const RawResourceAndroidNotificationSound(
           'mixkit_digital_clock_digital_alarm_buzzer_992'),
       playSound: true,
+      largeIcon: const DrawableResourceAndroidBitmap('ic_bg_service_large'),
       additionalFlags: Int32List.fromList(<int>[4]), // Loops audio continuously (FLAG_INSISTENT)
       audioAttributesUsage: AudioAttributesUsage.alarm,
       timeoutAfter: 30000, // Auto dismiss after 30 seconds

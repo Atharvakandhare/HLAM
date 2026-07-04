@@ -310,6 +310,15 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> resetEmployeeSession(int id) async {
+    try {
+      await _apiService.resetUserSession(id);
+    } catch (e) {
+      debugPrint("Error resetting employee session: $e");
+      rethrow;
+    }
+  }
+
   // --- Attendance Management ---
   List<Attendance> get attendance => _attendance;
 

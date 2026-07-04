@@ -67,12 +67,11 @@ class GroupedAttendance {
     final anyCheckedIn = sessions.any((s) => s.checkInTime != null && s.checkOutTime == null);
     if (anyCheckedIn) return 'CHECKED-IN';
 
-    final anyLate = sessions.any((s) => s.status.toLowerCase() == 'late');
+    // Both 'present' and 'late' session statuses count as 'PRESENT' overall for the day card.
+    final anyPresent = sessions.any((s) => s.status.toLowerCase() == 'present' || s.status.toLowerCase() == 'late');
     final anyHalfDay = sessions.any((s) => s.status.toLowerCase() == 'half_day');
-    final anyPresent = sessions.any((s) => s.status.toLowerCase() == 'present');
 
     if (anyPresent) return 'PRESENT';
-    if (anyLate) return 'LATE';
     if (anyHalfDay) return 'HALF DAY';
     
     if (sessions.isNotEmpty) return sessions.first.status.toUpperCase();
@@ -2198,9 +2197,9 @@ class GroupedAttendanceCard extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _sessionSelfie(context, 'Check-In', Icons.login_rounded, s.selfieUrl, s.checkInTime, s.address, const Color(0xFF10B981)),
+                            _sessionSelfie(context, s, true, const Color(0xFF10B981)),
                             Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
-                            _sessionSelfie(context, 'Check-Out', Icons.logout_rounded, s.checkoutSelfieUrl, s.checkOutTime, s.checkoutAddress, const Color(0xFFEF4444)),
+                            _sessionSelfie(context, s, false, const Color(0xFFEF4444)),
                             Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
                             _sessionTime('Hours', Icons.timer_outlined, null, const Color(0xFF2563EB), label2: s.workingHours),
                           ],
@@ -2237,13 +2236,15 @@ class GroupedAttendanceCard extends StatelessWidget {
 
   Widget _sessionSelfie(
     BuildContext context,
-    String label,
-    IconData icon,
-    String? imageUrl,
-    DateTime? timestamp,
-    String? address,
+    Attendance s,
+    bool isCheckIn,
     Color color,
   ) {
+    final label = isCheckIn ? 'Check-In' : 'Check-Out';
+    final icon = isCheckIn ? Icons.login_rounded : Icons.logout_rounded;
+    final imageUrl = isCheckIn ? s.selfieUrl : s.checkoutSelfieUrl;
+    final timestamp = isCheckIn ? s.checkInTime : s.checkOutTime;
+
     String? fullUrl;
     if (imageUrl != null && imageUrl.isNotEmpty) {
       fullUrl = imageUrl.startsWith('http')
@@ -2264,7 +2265,7 @@ class GroupedAttendanceCard extends StatelessWidget {
         const SizedBox(height: 6),
         if (fullUrl != null)
           GestureDetector(
-            onTap: () => _showSelfieDetail(context, imageUrl!, label, timestamp, address),
+            onTap: () => _showSelfieDetail(context, s, isCheckIn),
             child: Container(
               width: 32,
               height: 32,
@@ -2328,11 +2329,32 @@ class GroupedAttendanceCard extends StatelessWidget {
 
   void _showSelfieDetail(
     BuildContext context,
-    String imageUrl,
-    String title,
-    DateTime? timestamp,
-    String? address,
+    Attendance record,
+    bool isCheckIn,
   ) {
+    final imageUrl = isCheckIn ? record.selfieUrl : (record.checkoutSelfieUrl ?? '');
+    final timestamp = isCheckIn ? record.checkInTime : record.checkOutTime;
+    final address = isCheckIn ? record.address : record.checkoutAddress;
+
+    String statusText = '';
+    if (isCheckIn) {
+      if (record.isLateIn) {
+        statusText = 'Late Check In';
+      } else if (record.isEarlyIn) {
+        statusText = 'Early Check In';
+      } else {
+        statusText = 'Check In';
+      }
+    } else {
+      if (record.isLateOut) {
+        statusText = 'Late Check Out';
+      } else if (record.isEarlyOut) {
+        statusText = 'Early Check Out';
+      } else {
+        statusText = 'Check Out';
+      }
+    }
+
     final formattedTime = timestamp != null
         ? DateFormat('hh:mm:ss a').format(timestamp.toLocal())
         : '—';
@@ -2376,8 +2398,8 @@ class GroupedAttendanceCard extends StatelessWidget {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(28),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                        child: Stack(
+                          alignment: Alignment.bottomLeft,
                           children: [
                             AspectRatio(
                               aspectRatio: 3 / 4,
@@ -2409,77 +2431,72 @@ class GroupedAttendanceCard extends StatelessWidget {
                                       child: Icon(Icons.image_not_supported_rounded, color: Colors.grey, size: 48),
                                     ),
                             ),
+                            // Overlaid metadata at bottom-left corner
                             Container(
-                              padding: const EdgeInsets.all(20),
                               width: double.infinity,
+                              padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
                               decoration: const BoxDecoration(
-                                color: Colors.white,
-                                border: Border(
-                                  top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                                gradient: LinearGradient(
+                                  colors: [Colors.transparent, Colors.black87],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
                                 ),
                               ),
                               child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
                                       Icon(
-                                        title.toLowerCase().contains('check-in')
-                                            ? Icons.login_rounded
-                                            : Icons.logout_rounded,
-                                        color: title.toLowerCase().contains('check-in')
-                                            ? const Color(0xFF10B981)
-                                            : const Color(0xFFEF4444),
-                                        size: 18,
+                                        isCheckIn ? Icons.login_rounded : Icons.logout_rounded,
+                                        color: isCheckIn ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                        size: 16,
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 6),
                                       Text(
-                                        title.toUpperCase(),
+                                        statusText.toUpperCase(),
                                         style: TextStyle(
-                                          color: title.toLowerCase().contains('check-in')
-                                              ? const Color(0xFF10B981)
-                                              : const Color(0xFFEF4444),
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 12,
-                                          letterSpacing: 1.5,
+                                          color: isCheckIn ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 13,
+                                          letterSpacing: 1.0,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 8),
                                   Text(
                                     formattedTime,
                                     style: const TextStyle(
-                                      color: Color(0xFF0F172A),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 22,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 24,
                                       fontFamily: 'monospace',
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 2),
                                   Text(
                                     formattedDate,
                                     style: const TextStyle(
-                                      color: Color(0xFF64748B),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                   if (address != null && address.isNotEmpty) ...[
-                                    const SizedBox(height: 12),
-                                    const Divider(color: Color(0xFFE2E8F0), height: 1),
-                                    const SizedBox(height: 10),
+                                    const SizedBox(height: 8),
                                     Row(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Icon(Icons.location_on_rounded, size: 14, color: Color(0xFFEF4444)),
-                                        const SizedBox(width: 6),
+                                        const Icon(Icons.location_on_rounded, size: 12, color: Colors.white70),
+                                        const SizedBox(width: 4),
                                         Expanded(
                                           child: Text(
                                             address,
                                             style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF475569),
+                                              fontSize: 10,
+                                              color: Colors.white70,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
@@ -3744,6 +3761,7 @@ String _generateHorizontalCSV({
     'Email',
     'Department',
     'Total Working Hours',
+    'Total Overtime',
   ];
   for (int d = 1; d <= daysInMonth; d++) {
     headerParts.add(d.toString());
@@ -3757,16 +3775,19 @@ String _generateHorizontalCSV({
 
   for (var emp in employees) {
     double monthlyTotalHours = 0.0;
+    double monthlyOvertimeHours = 0.0;
     final List<String> rowParts = [
       emp.name.replaceAll(',', ';'),
       emp.email.replaceAll(',', ';'),
       (emp.department ?? 'N/A').replaceAll(',', ';'),
     ];
 
-    // Placeholder for monthly total working hours, we'll calculate and update it later.
-    // Let's reserve an index in rowParts for 'Total Working Hours'
+    // Placeholder for monthly total working hours and overtime.
+    // Let's reserve indices in rowParts
     final int totalHoursIndex = rowParts.length;
-    rowParts.add(''); // Temp placeholder
+    rowParts.add(''); // Temp placeholder for 'Total Working Hours'
+    final int totalOvertimeIndex = rowParts.length;
+    rowParts.add(''); // Temp placeholder for 'Total Overtime'
 
     // Build days columns
     for (int d = 1; d <= daysInMonth; d++) {
@@ -3826,6 +3847,7 @@ String _generateHorizontalCSV({
         status = hasHalfDay ? 'HD' : 'P';
 
         double dayHours = 0.0;
+        double dayOtHours = 0.0;
         final List<String> sessionIntervals = [];
         for (var s in daySessions) {
           final checkInStr = s.checkInTime != null ? DateFormat('hh:mm a').format(s.checkInTime!.toLocal()) : 'N/A';
@@ -3836,10 +3858,25 @@ String _generateHorizontalCSV({
             final end = s.checkOutTime ?? DateTime.now();
             dayHours += end.difference(s.checkInTime!).inMinutes / 60.0;
           }
+
+          if (s.overtimeDuration != null) {
+            final otMatch = RegExp(r'(\d+)\s*h\s*(\d+)\s*m').firstMatch(s.overtimeDuration!);
+            if (otMatch != null) {
+              final h = int.parse(otMatch.group(1)!);
+              final m = int.parse(otMatch.group(2)!);
+              dayOtHours += h + (m / 60.0);
+            } else {
+              final numVal = double.tryParse(s.overtimeDuration!);
+              if (numVal != null) {
+                dayOtHours += numVal;
+              }
+            }
+          }
         }
 
         sessionsText = '${sessionIntervals.join("; ")} [${dayHours.toStringAsFixed(2)} hrs]';
         monthlyTotalHours += dayHours;
+        monthlyOvertimeHours += dayOtHours;
       }
 
       rowParts.add(status);
@@ -3847,8 +3884,9 @@ String _generateHorizontalCSV({
       rowParts.add('"${sessionsText.replaceAll('"', '""')}"');
     }
 
-    // Set actual monthly total hours
+    // Set actual monthly total hours and overtime
     rowParts[totalHoursIndex] = '${monthlyTotalHours.toStringAsFixed(2)} hrs';
+    rowParts[totalOvertimeIndex] = '${monthlyOvertimeHours.toStringAsFixed(2)} hrs';
     rows.add(rowParts.join(','));
   }
 

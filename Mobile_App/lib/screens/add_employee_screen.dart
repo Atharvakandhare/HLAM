@@ -434,6 +434,67 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     }
   }
 
+  Future<void> _resetSession() async {
+    if (widget.employee == null) return;
+
+    final provider = Provider.of<AppProvider>(context, listen: false);
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Reset Employee Session'),
+        content: Text(
+          'Are you sure you want to reset the session for ${widget.employee!.name}?\n\n'
+          'This will force them to log out and allow them to log in on a new device.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await provider.resetEmployeeSession(widget.employee!.id);
+      if (mounted) {
+        AppMessages.showSuccess(
+          context,
+          'Employee session reset successfully.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppMessages.showError(context, e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   Future<void> _selectDob() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -1716,6 +1777,23 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          if (_isEditMode &&
+              _currentUser != null &&
+              ['system_admin', 'company_admin', 'manager', 'team_leader'].contains(_currentUser!.role))
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.phonelink_erase_rounded,
+                  color: Colors.redAccent,
+                  size: 22,
+                ),
+                tooltip: 'Reset Session',
+                onPressed: _resetSession,
+              ),
+            ),
+        ],
       ),
       body: _isLoading || _isUploadingPicture
           ? const Center(

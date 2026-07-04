@@ -30,6 +30,28 @@ class AttendanceDetailsScreen extends StatelessWidget {
   }
 
   void _showSelfieDetail(BuildContext context, String imageUrl, String title, DateTime? timestamp) {
+    final isCheckIn = title.toLowerCase().contains('in');
+    final address = isCheckIn ? record.address : record.checkoutAddress;
+
+    String statusText = '';
+    if (isCheckIn) {
+      if (record.isLateIn) {
+        statusText = 'Late Check In';
+      } else if (record.isEarlyIn) {
+        statusText = 'Early Check In';
+      } else {
+        statusText = 'Check In';
+      }
+    } else {
+      if (record.isLateOut) {
+        statusText = 'Late Check Out';
+      } else if (record.isEarlyOut) {
+        statusText = 'Early Check Out';
+      } else {
+        statusText = 'Check Out';
+      }
+    }
+
     String? fullUrl;
     if (imageUrl.isNotEmpty) {
       fullUrl = imageUrl.startsWith('http')
@@ -73,8 +95,8 @@ class AttendanceDetailsScreen extends StatelessWidget {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(28),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                        child: Stack(
+                          alignment: Alignment.bottomLeft,
                           children: [
                             AspectRatio(
                               aspectRatio: 3 / 4,
@@ -106,62 +128,79 @@ class AttendanceDetailsScreen extends StatelessWidget {
                                       child: Icon(Icons.image_not_supported_rounded, color: Colors.grey, size: 48),
                                     ),
                             ),
+                            // Overlaid metadata at bottom-left corner
                             Container(
-                              padding: const EdgeInsets.all(20),
                               width: double.infinity,
+                              padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
                               decoration: const BoxDecoration(
-                                color: Colors.white,
-                                border: Border(
-                                  top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                                gradient: LinearGradient(
+                                  colors: [Colors.transparent, Colors.black87],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
                                 ),
                               ),
                               child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
                                       Icon(
-                                        title.toLowerCase().contains('login')
-                                            ? Icons.login_rounded
-                                            : Icons.logout_rounded,
-                                        color: title.toLowerCase().contains('login')
-                                            ? const Color(0xFF10B981)
-                                            : const Color(0xFFEF4444),
-                                        size: 18,
+                                        isCheckIn ? Icons.login_rounded : Icons.logout_rounded,
+                                        color: isCheckIn ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                        size: 16,
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 6),
                                       Text(
-                                        title.toUpperCase(),
+                                        statusText.toUpperCase(),
                                         style: TextStyle(
-                                          color: title.toLowerCase().contains('login')
-                                              ? const Color(0xFF10B981)
-                                              : const Color(0xFFEF4444),
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 12,
-                                          letterSpacing: 1.5,
+                                          color: isCheckIn ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 13,
+                                          letterSpacing: 1.0,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 8),
                                   Text(
                                     formattedTime,
                                     style: const TextStyle(
-                                      color: Color(0xFF0F172A),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 22,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 24,
                                       fontFamily: 'monospace',
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 2),
                                   Text(
                                     formattedDate,
                                     style: const TextStyle(
-                                      color: Color(0xFF64748B),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
+                                  if (address != null && address.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.location_on_rounded, size: 12, color: Colors.white70),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            address,
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.white70,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),

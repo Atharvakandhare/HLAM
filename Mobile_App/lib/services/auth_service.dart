@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/user.dart';
 import 'api_service.dart';
 // import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Removed as ApiService handles storage
@@ -82,6 +83,10 @@ class AuthService {
       // Ignore
     }
     await _api.deleteToken();
+  }
+
+  Future<Map<String, dynamic>> registerFace(XFile file) async {
+    return await _api.uploadFaceSelfie(file);
   }
 
   Future<void> forgotPassword(String email) async {

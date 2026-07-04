@@ -29,6 +29,7 @@ class Attendance {
   final bool isEarlyIn;
   final bool isEarlyOut;
   final bool overtimeAllowed;
+  final String? overtimeDuration;
 
   Attendance({
     required this.id,
@@ -59,6 +60,7 @@ class Attendance {
     this.isEarlyIn = false,
     this.isEarlyOut = false,
     this.overtimeAllowed = false,
+    this.overtimeDuration,
   });
 
   String get workingHours {
@@ -148,6 +150,7 @@ class Attendance {
       isEarlyIn: json['isEarlyIn'] == true || json['is_early_in'] == true || json['isEarlyIn'] == 1 || json['is_early_in'] == 1,
       isEarlyOut: json['isEarlyOut'] == true || json['is_early_out'] == true || json['isEarlyOut'] == 1 || json['is_early_out'] == 1,
       overtimeAllowed: json['overtimeAllowed'] == true || json['overtime_allowed'] == true || json['overtimeAllowed'] == 1 || json['overtime_allowed'] == 1,
+      overtimeDuration: json['overtimeDuration'] ?? json['overtime_duration'],
     );
   }
 

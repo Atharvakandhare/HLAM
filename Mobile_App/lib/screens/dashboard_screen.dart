@@ -13,6 +13,7 @@ import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/reminder_alarm_service.dart';
 import 'attendance_capture_screen.dart';
+import 'view_face_registration_screen.dart';
 import 'admin_leaves_screen.dart';
 import 'admin_marketing_tracking_screen.dart';
 import 'team_management_screen.dart';
@@ -22,6 +23,7 @@ import 'main_navigation_screen.dart';
 import 'register_company_screen.dart';
 import '../utils/app_messages.dart';
 import '../widgets/app_avatar.dart';
+import 'package:image_picker/image_picker.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -94,7 +96,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (user != null) {
       if (user.role == 'system_admin' || user.role == 'company_admin') {
         final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-        await provider.fetchStats(startDate: todayStr, endDate: todayStr);
+        await Future.wait([
+          provider.fetchStats(startDate: todayStr, endDate: todayStr),
+          provider.fetchTeams(),
+        ]);
       } else {
         await Future.wait([
           provider.fetchTodayAttendance(),
@@ -1372,6 +1377,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Widget> _buildAdminContent(AppProvider provider) {
     final stats = provider.attendanceStats;
     final employees = provider.employees;
+    final teamsCount = provider.teams.length;
 
     return [
       const Row(
@@ -1389,98 +1395,254 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       const SizedBox(height: 16),
+      
+      // Combined Stats Card: Employees Count & Teams Count
+      Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: const Color(0xFFE2E8F0),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Employees section
+                Expanded(
+                  child: InkWell(
+                    onTap: () => Navigator.pushNamed(context, '/employees'),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFF2563EB).withValues(alpha: 0.12),
+                                  const Color(0xFF2563EB).withValues(alpha: 0.03),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.people_alt_rounded,
+                              color: Color(0xFF2563EB),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                '${employees.length}',
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF0F172A),
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Employees',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Vertical divider line (floating in the middle)
+                Container(
+                  width: 1.5,
+                  margin: const EdgeInsets.symmetric(vertical: 14),
+                  color: const Color(0xFFE2E8F0),
+                ),
+                // Teams section
+                Expanded(
+                  child: InkWell(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const TeamManagementScreen()),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                                  const Color(0xFF8B5CF6).withValues(alpha: 0.03),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.groups_rounded,
+                              color: Color(0xFF8B5CF6),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                '$teamsCount',
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF0F172A),
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Total Teams',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 16),
+
+      // Redesigned grid action cards
       Row(
         children: [
-          _buildAdminActionCard(
-            'Employees',
-            '${employees.length}',
-            Icons.people_alt_rounded,
-            const Color(0xFF2563EB),
-            () => Navigator.pushNamed(context, '/employees'),
-          ),
-          const SizedBox(width: 16),
-          _buildAdminActionCard(
+          _buildGridAdminActionCard(
             'Add Employee',
-            'New',
+            'Register new staff',
             Icons.person_add_alt_1_rounded,
             const Color(0xFF10B981),
             () => Navigator.pushNamed(context, '/add_employee'),
           ),
+          const SizedBox(width: 12),
+          _buildGridAdminActionCard(
+            'Leave Requests',
+            'Review leave apps',
+            Icons.edit_document,
+            const Color(0xFFF59E0B),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AdminLeavesScreen()),
+            ),
+          ),
         ],
       ),
-      const SizedBox(height: 16),
-      _buildFullWidthAdminActionCard(
-        'Leave Requests',
-        'Review and approve or reject employee leave applications',
-        Icons.edit_document,
-        const Color(0xFFF59E0B),
-        () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const AdminLeavesScreen()),
-        ),
-      ),
-      const SizedBox(height: 16),
-      _buildFullWidthAdminActionCard(
-        'Manage Teams',
-        'Create teams, assign managers and team leaders',
-        Icons.groups_rounded,
-        const Color(0xFF8B5CF6),
-        () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const TeamManagementScreen()),
-        ),
-      ),
-      const SizedBox(height: 16),
-      _buildFullWidthAdminActionCard(
-        'Marketing Live Track',
-        'Monitor active field employee movements and paths',
-        Icons.map_rounded,
-        const Color(0xFF2563EB),
-        () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const AdminMarketingTrackingScreen(),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          _buildGridAdminActionCard(
+            'Manage Teams',
+            'Setup & assign',
+            Icons.groups_rounded,
+            const Color(0xFF8B5CF6),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const TeamManagementScreen()),
+            ),
           ),
-        ),
-      ),
-      const SizedBox(height: 16),
-      _buildFullWidthAdminActionCard(
-        'Company Holidays 🏖',
-        'Set, manage and upload company holiday sheets',
-        Icons.beach_access_rounded,
-        const Color(0xFFF97316),
-        () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CompanyHolidaysScreen(),
-          ),
-        ),
-      ),
-
-      // ── System Admin only: Register a new company ──────────────────────────
-      if (_user?.role == 'system_admin') ...[
-        const SizedBox(height: 16),
-        _buildFullWidthAdminActionCard(
-          'Register New Company',
-          'Create a new company account and set up its admin on HLAM',
-          Icons.domain_add_rounded,
-          const Color(0xFF7C3AED),
-          () async {
-            final result = await Navigator.push<bool>(
+          const SizedBox(width: 12),
+          _buildGridAdminActionCard(
+            'Marketing Live Track',
+            'Monitor movements',
+            Icons.map_rounded,
+            const Color(0xFF2563EB),
+            () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const RegisterCompanyScreen(),
+                builder: (context) => const AdminMarketingTrackingScreen(),
               ),
-            );
-            if (result == true && mounted) {
-              AppMessages.showSuccess(
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      if (_user?.role == 'system_admin') ...[
+        Row(
+          children: [
+            _buildGridAdminActionCard(
+              'Company Holidays',
+              'Set holidays 🏖',
+              Icons.beach_access_rounded,
+              const Color(0xFFF97316),
+              () => Navigator.push(
                 context,
-                'Company registered successfully!',
-              );
-            }
-          },
+                MaterialPageRoute(
+                  builder: (context) => const CompanyHolidaysScreen(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            _buildGridAdminActionCard(
+              'Register Company',
+              'Create new accounts',
+              Icons.domain_add_rounded,
+              const Color(0xFF7C3AED),
+              () async {
+                final result = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RegisterCompanyScreen(),
+                  ),
+                );
+                if (result == true && mounted) {
+                  AppMessages.showSuccess(
+                    context,
+                    'Company registered successfully!',
+                  );
+                }
+              },
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildFullWidthAdminActionCard(
           'Company Registrations',
           'Manage, approve, or reject company self-registration requests',
@@ -1489,6 +1651,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           () {
             Navigator.pushNamed(context, '/company_registrations');
           },
+        ),
+      ] else ...[
+        _buildFullWidthAdminActionCard(
+          'Company Holidays 🏖',
+          'Set, manage and upload company holiday sheets',
+          Icons.beach_access_rounded,
+          const Color(0xFFF97316),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CompanyHolidaysScreen(),
+            ),
+          ),
         ),
       ],
 
@@ -1645,78 +1820,147 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color color,
     VoidCallback onTap,
   ) {
-    return InkWell(
-      onTap: onTap,
+    return Material(
+      color: Colors.white,
       borderRadius: BorderRadius.circular(24),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: color.withValues(alpha: 0.22),
+              width: 1.5,
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    color.withValues(alpha: 0.2),
-                    color.withValues(alpha: 0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                borderRadius: BorderRadius.circular(20),
+                child: Icon(icon, color: color, size: 28),
               ),
-              child: Icon(icon, color: color, size: 32),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
+              const SizedBox(width: 8),
+              Icon(
                 Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: Color(0xFF0F172A),
+                size: 14,
+                color: color.withValues(alpha: 0.7),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGridAdminActionCard(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Expanded(
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: color.withValues(alpha: 0.22),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                    height: 1.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -2391,6 +2635,314 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _registerFaceProcess() async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      setState(() {
+        _isFirstLoad = true;
+      });
+
+      final authService = AuthService();
+      final response = await authService.registerFace(image);
+
+      await _handleRefresh();
+
+      if (mounted) {
+        AppMessages.showSuccess(
+          context,
+          response['message'] ?? 'Face registered successfully!',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppMessages.showError(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFirstLoad = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildFaceRegistrationCard() {
+    final user = _user;
+    if (user == null) return const SizedBox.shrink();
+
+    final isRegistered = user.isFaceRegistered == true;
+
+    if (isRegistered) {
+      return GestureDetector(
+        onTap: () async {
+          final refresh = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ViewFaceRegistrationScreen(user: user),
+            ),
+          );
+          if (refresh == true) {
+            _handleRefresh();
+          }
+        },
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: const Color(0xFF10B981).withValues(alpha: 0.15),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF10B981).withValues(alpha: 0.05),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.verified_user_rounded,
+                    color: Color(0xFF10B981),
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Face Verification',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF065F46),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'ACTIVE',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Biometric signature matched. Tap to view details.',
+                        style: TextStyle(
+                          color: Color(0xFF047857),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Color(0xFF047857),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFF1F2), Color(0xFFFFE4E6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: const Color(0xFFFDA4AF).withValues(alpha: 0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFE11D48).withValues(alpha: 0.05),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE11D48).withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.face_unlock_rounded,
+                      color: Color(0xFFE11D48),
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Biometric Registration',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF9F1239),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE11D48),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Text(
+                                'REQUIRED',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Register reference profile photo to unlock check-in.',
+                          style: TextStyle(
+                            color: Color(0xFFBE123C),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFE11D48), Color(0xFFBE123C)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFE11D48).withValues(alpha: 0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: _registerFaceProcess,
+                  icon: const Icon(Icons.camera_front_rounded, size: 18, color: Colors.white),
+                  label: const Text(
+                    'Register Face Descriptor',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
   // ========== EMPLOYEE CONTENT ==========
   List<Widget> _buildEmployeeContent(AppProvider provider) {
     final stats = provider.userStats;
@@ -2464,6 +3016,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _showCheckoutReasonDialog(context, today.id);
           },
         ),
+      const SizedBox(height: 24),
+      _buildFaceRegistrationCard(),
       const SizedBox(height: 28),
       if (_user?.role == 'manager' || _user?.role == 'team_leader') ...[
         _buildFullWidthAdminActionCard(

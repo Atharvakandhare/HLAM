@@ -9,6 +9,8 @@ import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 import '../providers/app_provider.dart';
 import '../utils/app_messages.dart';
+import '../services/auth_service.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 class AttendanceCaptureScreen extends StatefulWidget {
   final bool isCheckout;
@@ -41,6 +43,7 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
   XFile? _capturedImage;
   AnimationController? _pulseController;
   Animation<double>? _pulseAnimation;
+  late final FaceDetector _faceDetector;
 
   @override
   void initState() {
@@ -53,6 +56,12 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
 
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(parent: _pulseController!, curve: Curves.easeInOut),
+    );
+
+    _faceDetector = FaceDetector(
+      options: FaceDetectorOptions(
+        performanceMode: FaceDetectorMode.accurate,
+      ),
     );
 
     _initializeCamera();
@@ -153,81 +162,6 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
       // Draw the original image
       canvas.drawImage(originalImage, Offset.zero, Paint());
 
-      // Banner configuration at bottom (18% of image height)
-      final double bannerHeight = h * 0.18;
-      final double bannerY = h - bannerHeight;
-
-      // Draw semi-transparent dark banner background
-      final bannerPaint = Paint()
-        ..color = Colors.black.withValues(alpha: 0.65)
-        ..style = PaintingStyle.fill;
-      canvas.drawRect(
-        Rect.fromLTWH(0, bannerY, w, bannerHeight),
-        bannerPaint,
-      );
-
-      // Draw side indicator accent line
-      final accentPaint = Paint()
-        ..color = isCheckout ? const Color(0xFFEF4444) : const Color(0xFF10B981)
-        ..style = PaintingStyle.fill;
-      canvas.drawRect(
-        Rect.fromLTWH(0, bannerY, w * 0.02, bannerHeight),
-        accentPaint,
-      );
-
-      // Setup styles based on resolution
-      final double textPaddingLeft = w * 0.05;
-      final double titleFontSize = h * 0.034;
-      final double infoFontSize = h * 0.024;
-
-      final timeStr = DateFormat('hh:mm:ss a').format(dateTime);
-      final dateStr = DateFormat('dd MMM yyyy').format(dateTime);
-      final titleText = isCheckout ? "CHECK-OUT VERIFIED" : "CHECK-IN VERIFIED";
-
-      // Draw Title Text
-      final titlePainter = TextPainter(
-        text: TextSpan(
-          text: titleText,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: titleFontSize,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        textDirection: ui.TextDirection.ltr,
-      );
-      titlePainter.layout(maxWidth: w * 0.9);
-      titlePainter.paint(
-        canvas,
-        Offset(textPaddingLeft, bannerY + (bannerHeight * 0.14)),
-      );
-
-      // Draw Info text
-      final locationStr = (address != null && address.isNotEmpty)
-          ? address
-          : "Coordinates captured";
-      final infoText = "Date: $dateStr  |  Time: $timeStr\n$locationStr";
-
-      final infoPainter = TextPainter(
-        text: TextSpan(
-          text: infoText,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.9),
-            fontSize: infoFontSize,
-            height: 1.3,
-          ),
-        ),
-        textDirection: ui.TextDirection.ltr,
-      );
-      infoPainter.layout(maxWidth: w * 0.9);
-      infoPainter.paint(
-        canvas,
-        Offset(
-          textPaddingLeft,
-          bannerY + (bannerHeight * 0.14) + titlePainter.height + 4,
-        ),
-      );
-
       // Rasterise at the *scaled-down* resolution
       final picture = recorder.endRecording();
       final watermarkedUiImage = await picture.toImage(outWidth, outHeight);
@@ -274,6 +208,22 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
 
       // 1. Capture Image
       final XFile image = await _controller!.takePicture();
+      
+      // Perform local ML Kit face pre-check to verify face presence
+      final user = await AuthService().getUser();
+      final userRole = user?.role ?? '';
+      final needsFaceVerification = ['employee', 'manager', 'team_leader'].contains(userRole);
+
+      if (needsFaceVerification) {
+        final inputImage = InputImage.fromFilePath(image.path);
+        final List<Face> faces = await _faceDetector.processImage(inputImage);
+        if (faces.isEmpty) {
+          throw Exception(
+            "Face not detected! Please align your face inside the guide, ensure good lighting, and try again."
+          );
+        }
+      }
+
       setState(() {
         _capturedImage = image;
       });
@@ -362,6 +312,7 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
   void dispose() {
     _controller?.dispose();
     _pulseController?.dispose();
+    _faceDetector.close();
     super.dispose();
   }
 

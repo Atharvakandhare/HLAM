@@ -30,8 +30,11 @@ class ApiService {
   static ApiException? lastApiException;
 
   // Live API server
+  static const String _liveUrl = 'https://intime.hirelyft.in/api';
+
+  // Development Localhost Backend
   static String get baseUrl {
-    return 'https://intime.hirelyft.in/api';
+    return _liveUrl;
   }
 
 
@@ -263,6 +266,11 @@ class ApiService {
     await delete('/admin/users/$id');
   }
 
+  Future<Map<String, dynamic>> resetUserSession(int id) async {
+    final response = await post('/admin/users/$id/reset-session', {});
+    return Map<String, dynamic>.from(response);
+  }
+
   Future<Map<String, dynamic>> getProfile() async {
     return await get('/auth/me');
   }
@@ -298,7 +306,7 @@ class ApiService {
     String? state,
     String? city,
   }) async {
-    return await put('/auth/profile', {
+    return await post('/auth/profile', {
       'name': name,
       if (dob != null) 'dob': dob,
       if (state != null) 'state': state,
@@ -566,6 +574,77 @@ class ApiService {
 
       if (e is TimeoutException) {
         userMessage = 'The profile picture upload timed out. The file might be too large or the server is slow.';
+      } else if (e.toString().contains('SocketException') || 
+                 e.toString().contains('Connection refused') || 
+                 e.toString().contains('Failed host lookup')) {
+        userMessage = 'Cannot reach the server for upload. Please check your internet connection or server status.';
+      }
+
+      final apiException = ApiException(
+        userMessage: userMessage,
+        devDetails: devDetails,
+        url: fullUrl,
+      );
+      lastApiException = apiException;
+      throw apiException;
+    }
+  }
+
+  /// Upload a face registration image to /auth/register-face.
+  /// Returns { message, isFaceRegistered } on success.
+  Future<Map<String, dynamic>> uploadFaceSelfie(XFile file) async {
+    final fullUrl = '$baseUrl/auth/register-face';
+    try {
+      final uri = Uri.parse(fullUrl);
+      final request = http.MultipartRequest('POST', uri);
+
+      final token = await getToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      final mimeType = _getMediaType(file.name);
+      String fileName = file.name.isEmpty
+          ? 'face_${DateTime.now().millisecondsSinceEpoch}'
+          : file.name;
+
+      if (!fileName.contains('.')) {
+        fileName = '$fileName.jpg';
+      }
+
+      if (kIsWeb) {
+        final bytes = await file.readAsBytes();
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'face',
+            bytes,
+            filename: fileName,
+            contentType: mimeType,
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'face',
+            file.path,
+            filename: fileName,
+            contentType: mimeType,
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 45));
+      final response = await http.Response.fromStream(streamedResponse);
+      final result = _processResponse(response);
+      return Map<String, dynamic>.from(result);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+
+      String userMessage = 'Unable to upload face registration.';
+      String devDetails = 'Error: $e\nAttempted URL: $fullUrl';
+
+      if (e is TimeoutException) {
+        userMessage = 'The face registration upload timed out. The file might be too large or the server is slow.';
       } else if (e.toString().contains('SocketException') || 
                  e.toString().contains('Connection refused') || 
                  e.toString().contains('Failed host lookup')) {

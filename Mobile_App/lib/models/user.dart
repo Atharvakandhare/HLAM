@@ -16,6 +16,8 @@ class User {
   final String? workMode;
   final String? workType;
   final int? defaultShiftId;
+  final bool? isFaceRegistered;
+  final String? faceImageUrl;
   
   // Nested structures mapped for easier access
   final String? companyName;
@@ -57,6 +59,8 @@ class User {
     this.teamName,
     this.managerName,
     this.teamLeaderName,
+    this.isFaceRegistered,
+    this.faceImageUrl,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -103,6 +107,8 @@ class User {
       teamName: teamMap?['name'],
       managerName: managerMap?['name'],
       teamLeaderName: tlMap?['name'],
+      isFaceRegistered: json['isFaceRegistered'] == true || json['is_face_registered'] == true,
+      faceImageUrl: json['faceImageUrl'] ?? json['face_image_url'],
     );
   }
 
@@ -135,6 +141,8 @@ class User {
       'teamName': teamName,
       'managerName': managerName,
       'teamLeaderName': teamLeaderName,
+      'isFaceRegistered': isFaceRegistered,
+      'faceImageUrl': faceImageUrl,
     };
   }
 

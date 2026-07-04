@@ -70,7 +70,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(100),
                     child: Image.asset(
-                      'assets/HL_Logo.png',
+                      'assets/HLAM_logo.png',
                       width: 170,
                       height: 170,
                       fit: BoxFit.cover,

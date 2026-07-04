@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -1224,368 +1225,579 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text(
-          'My Profile',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF0F172A),
-            fontSize: 20,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, color: Color(0xFF2563EB)),
-            onPressed: _showEditProfileSheet,
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444)),
-            onPressed: _confirmLogout,
-          ),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        child: Column(
-          children: [
-            // Profile Card Header
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Avatar Section
-                  Stack(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: SafeArea(
+          top: false, // Allow background header gradient to cover status bar space
+          bottom: true, // Respect bottom navigation safe area bar
+          child: Column(
+            children: [
+              _buildStickyHeader(emp),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
                     children: [
-                      _isUploadingPicture
-                          ? const CircleAvatar(
-                              radius: 50,
-                              backgroundColor: Color(0xFFF8FAFC),
-                              child: CircularProgressIndicator(),
-                            )
-                          : AppAvatar(
-                              radius: 50,
-                              backgroundColor: const Color(
-                                0xFF2563EB,
-                              ).withValues(alpha: 0.08),
-                              imageUrl:
-                                  emp.profilePicture != null &&
-                                      emp.profilePicture!.isNotEmpty
-                                  ? '${ApiService.baseUrl.replaceAll('/api', '')}${emp.profilePicture}'
-                                  : null,
-                              fallback: Text(
-                                emp.name.isNotEmpty
-                                    ? emp.name[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 36,
-                                  color: Color(0xFF2563EB),
-                                ),
+                      const SizedBox(height: 8),
+                      if (isAdmin) ...[
+                        // For system_admin and company_admin
+                        _buildSectionHeader('ADMINISTRATOR INFORMATION'),
+                        _buildInfoCard([
+                          _buildInfoRow(
+                            Icons.person_outline_rounded,
+                            'Name',
+                            emp.name,
+                            isEditable: true,
+                            themeColor: const Color(0xFF2563EB),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.email_outlined,
+                            'Email Address',
+                            emp.email,
+                            themeColor: const Color(0xFF2563EB),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.badge_outlined,
+                            'Role / Designation',
+                            emp.role.toUpperCase().replaceAll('_', ' '),
+                            themeColor: const Color(0xFF2563EB),
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+
+                        _buildSectionHeader('COMPANY INFORMATION'),
+                        _buildInfoCard([
+                          _buildInfoRow(
+                            Icons.business_outlined,
+                            'Company Name',
+                            emp.companyName ?? 'N/A',
+                            themeColor: const Color(0xFF10B981),
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+                      ] else ...[
+                        // For employees, managers, team leaders
+                        _buildSectionHeader('EMPLOYEE INFORMATION'),
+                        _buildInfoCard([
+                          _buildInfoRow(
+                            Icons.person_outline_rounded,
+                            'Name',
+                            emp.name,
+                            isEditable: true,
+                            themeColor: const Color(0xFF2563EB),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.badge_outlined,
+                            'Employee ID',
+                            emp.employeeId ?? 'N/A',
+                            themeColor: const Color(0xFF2563EB),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.business_outlined,
+                            'Department',
+                            emp.department ?? 'N/A',
+                            themeColor: const Color(0xFF2563EB),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.email_outlined,
+                            'Email Address',
+                            emp.email,
+                            themeColor: const Color(0xFF2563EB),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.cake_outlined,
+                            'Date of Birth',
+                            formattedDob,
+                            isEditable: true,
+                            themeColor: const Color(0xFF2563EB),
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+
+                        _buildSectionHeader('TEAM ASSIGNMENTS'),
+                        _buildInfoCard([
+                          _buildInfoRow(
+                            Icons.business_outlined,
+                            'Company Name',
+                            emp.companyName ?? 'N/A',
+                            themeColor: const Color(0xFF10B981),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.groups_outlined,
+                            'Assigned Team Name',
+                            emp.teamName ?? 'N/A',
+                            themeColor: const Color(0xFF10B981),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.person_pin_outlined,
+                            'Team Manager Name',
+                            emp.managerName ?? 'N/A',
+                            themeColor: const Color(0xFF10B981),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.assignment_ind_outlined,
+                            'Team Leader Name',
+                            emp.teamLeaderName ?? 'N/A',
+                            themeColor: const Color(0xFF10B981),
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+
+                        _buildSectionHeader('WORK ENVIRONMENT'),
+                        _buildInfoCard([
+                          if (!(emp.department?.toLowerCase() == 'marketing' &&
+                              (emp.workType == 'Field Work' ||
+                                  emp.workType == 'Office + Field Work'))) ...[
+                            _buildInfoRow(
+                              Icons.location_on_outlined,
+                              'Work Mode',
+                              emp.workMode ?? 'Work From Office',
+                              themeColor: const Color(0xFFF59E0B),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                            ),
+                          ],
+                          _buildInfoRow(
+                            Icons.work_outline_rounded,
+                            'Work Type',
+                            emp.workType ?? 'N/A',
+                            themeColor: const Color(0xFFF59E0B),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.map_outlined,
+                            'State',
+                            emp.state ?? 'N/A',
+                            isEditable: true,
+                            themeColor: const Color(0xFFF59E0B),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          _buildInfoRow(
+                            Icons.location_city_outlined,
+                            'City',
+                            emp.city ?? 'N/A',
+                            isEditable: true,
+                            themeColor: const Color(0xFFF59E0B),
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+                      ],
+
+                      _buildSectionHeader('ACCOUNT SECURITY'),
+                      _buildInfoCard([
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          leading: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.lock_reset_rounded,
+                              color: Color(0xFF8B5CF6),
+                              size: 22,
+                            ),
+                          ),
+                          title: const Text(
+                            'Update Account Password',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'Keep your login secure and up to date.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          onTap: _showChangePasswordSheet,
+                        ),
+                        if (isAdmin) ...[
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            leading: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(
+                                Icons.settings_suggest_rounded,
+                                color: Color(0xFF10B981),
+                                size: 22,
                               ),
                             ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: CircleAvatar(
-                          radius: 18,
-                          backgroundColor: const Color(0xFF2563EB),
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.camera_alt_outlined,
-                              color: Colors.white,
-                              size: 16,
+                            title: const Text(
+                              'Configure Company Rules',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Color(0xFF0F172A),
+                              ),
                             ),
-                            onPressed: _pickImage,
+                            subtitle: const Text(
+                              'Update GPS geofence, times, and radius.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 14,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const CompanySettingsScreen(),
+                                ),
+                              );
+                            },
                           ),
-                        ),
-                      ),
+                        ],
+                      ]),
+                      const SizedBox(height: 40),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Max size: 2 MB (JPG/PNG)',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (emp.profilePicture != null &&
-                      emp.profilePicture!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    TextButton(
-                      onPressed: _deleteImage,
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(50, 30),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text(
-                        'Remove Photo',
-                        style: TextStyle(
-                          color: Color(0xFFEF4444),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                  // Name & Role
-                  Text(
-                    emp.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 20,
-                      color: Color(0xFF0F172A),
+  Widget _buildStickyHeader(User emp) {
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double headerHeight = 155 + statusBarHeight;
+    final double cardTop = headerHeight - 85;
+    final double totalHeight = cardTop + 235;
+
+    return SizedBox(
+      height: totalHeight,
+      child: Stack(
+        children: [
+          // 1. Gradient Background
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: headerHeight,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF1E3A8A), // Deep Navy Blue
+                    Color(0xFF3B82F6), // Vibrant Royal Blue
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(32),
+                  bottomRight: Radius.circular(32),
+                ),
+              ),
+              child: Stack(
+                children: [
+                  // Subtle ambient background circles
+                  Positioned(
+                    right: -40,
+                    top: -40,
+                    child: CircleAvatar(
+                      radius: 90,
+                      backgroundColor: Colors.white.withValues(alpha: 0.04),
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB).withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      emp.role.toUpperCase().replaceAll('_', ' '),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2563EB),
-                        letterSpacing: 0.5,
-                      ),
+                  Positioned(
+                    left: -20,
+                    bottom: -20,
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.white.withValues(alpha: 0.04),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF2563EB),
-                      side: const BorderSide(
-                        color: Color(0xFF2563EB),
-                        width: 1.2,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
+                  // "My Profile" title and logout button
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: 24,
+                      right: 24,
+                      top: statusBarHeight + 8,
+                      bottom: 8,
                     ),
-                    onPressed: _showEditProfileSheet,
-                    icon: const Icon(Icons.edit_rounded, size: 14),
-                    label: const Text(
-                      'Edit Details',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'My Profile',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.logout_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          tooltip: 'Log Out',
+                          onPressed: _confirmLogout,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+          ),
+          // 2. Profile Card
+          Positioned(
+            top: cardTop,
+            left: 0,
+            right: 0,
+            child: _buildProfileCard(emp),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Profile info sections
-            if (isAdmin) ...[
-              // For system_admin and company_admin
-              _buildSectionHeader('ADMINISTRATOR INFORMATION'),
-              _buildInfoCard([
-                _buildInfoRow(Icons.person_outline_rounded, 'Name', emp.name),
-                _buildInfoRow(Icons.email_outlined, 'Email Address', emp.email),
-                _buildInfoRow(
-                  Icons.badge_outlined,
-                  'Role / Designation',
-                  emp.role.toUpperCase().replaceAll('_', ' '),
-                ),
-              ]),
-              const SizedBox(height: 24),
-
-              _buildSectionHeader('COMPANY INFORMATION'),
-              _buildInfoCard([
-                _buildInfoRow(
-                  Icons.business_outlined,
-                  'Company Name',
-                  emp.companyName ?? 'N/A',
-                ),
-              ]),
-              const SizedBox(height: 24),
-            ] else ...[
-              // For employees, managers, team leaders
-              _buildSectionHeader('EMPLOYEE INFORMATION'),
-              _buildInfoCard([
-                _buildInfoRow(
-                  Icons.badge_outlined,
-                  'Employee ID',
-                  emp.employeeId ?? 'N/A',
-                ),
-                _buildInfoRow(
-                  Icons.business_outlined,
-                  'Department',
-                  emp.department ?? 'N/A',
-                ),
-                _buildInfoRow(Icons.email_outlined, 'Email Address', emp.email),
-                _buildInfoRow(
-                  Icons.cake_outlined,
-                  'Date of Birth',
-                  formattedDob,
-                ),
-              ]),
-              const SizedBox(height: 24),
-
-              _buildSectionHeader('TEAM ASSIGNMENTS'),
-              _buildInfoCard([
-                _buildInfoRow(
-                  Icons.business_outlined,
-                  'Company Name',
-                  emp.companyName ?? 'N/A',
-                ),
-                _buildInfoRow(
-                  Icons.groups_outlined,
-                  'Assigned Team Name',
-                  emp.teamName ?? 'N/A',
-                ),
-                _buildInfoRow(
-                  Icons.person_pin_outlined,
-                  'Team Manager Name',
-                  emp.managerName ?? 'N/A',
-                ),
-                _buildInfoRow(
-                  Icons.assignment_ind_outlined,
-                  'Team Leader Name',
-                  emp.teamLeaderName ?? 'N/A',
-                ),
-              ]),
-              const SizedBox(height: 24),
-
-              _buildSectionHeader('WORK ENVIRONMENT'),
-              _buildInfoCard([
-                if (!(emp.department?.toLowerCase() == 'marketing' &&
-                    (emp.workType == 'Field Work' ||
-                        emp.workType == 'Office + Field Work')))
-                  _buildInfoRow(
-                    Icons.location_on_outlined,
-                    'Work Mode',
-                    emp.workMode ?? 'Work From Office',
-                  ),
-                _buildInfoRow(
-                  Icons.work_outline_rounded,
-                  'Work Type',
-                  emp.workType ?? 'N/A',
-                ),
-                _buildInfoRow(Icons.map_outlined, 'State', emp.state ?? 'N/A'),
-                _buildInfoRow(
-                  Icons.location_city_outlined,
-                  'City',
-                  emp.city ?? 'N/A',
-                ),
-              ]),
-              const SizedBox(height: 24),
-            ],
-
-            _buildSectionHeader('ACCOUNT SECURITY'),
-            _buildInfoCard([
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB).withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.lock_reset_rounded,
-                    color: Color(0xFF2563EB),
-                    size: 22,
+  Widget _buildProfileCard(User emp) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Avatar Section with Gradient border
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF3B82F6),
+                      Color(0xFF8B5CF6),
+                    ],
                   ),
                 ),
-                title: const Text(
-                  'Update Account Password',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: _isUploadingPicture
+                      ? const CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Color(0xFFF8FAFC),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Color(0xFF2563EB),
+                          ),
+                        )
+                      : AppAvatar(
+                          radius: 50,
+                          backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.08),
+                          imageUrl: emp.profilePicture != null && emp.profilePicture!.isNotEmpty
+                              ? '${ApiService.baseUrl.replaceAll('/api', '')}${emp.profilePicture}'
+                              : null,
+                          fallback: Text(
+                            emp.name.isNotEmpty ? emp.name[0].toUpperCase() : '?',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 36,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        ),
                 ),
-                subtitle: const Text(
-                  'Keep your login secure and up to date.',
-                  style: TextStyle(fontSize: 11),
-                ),
-                trailing: const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 14,
-                  color: Colors.grey,
-                ),
-                onTap: _showChangePasswordSheet,
               ),
-              if (isAdmin) ...[
-                const Divider(height: 1),
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
+                      color: const Color(0xFF2563EB),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: const Icon(
-                      Icons.settings_suggest_rounded,
-                      color: Color(0xFF8B5CF6),
-                      size: 22,
+                      Icons.camera_alt_rounded,
+                      color: Colors.white,
+                      size: 16,
                     ),
                   ),
-                  title: const Text(
-                    'Configure Company Rules',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Name & Role
+          Text(
+            emp.name,
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 22,
+              color: Color(0xFF0F172A),
+              letterSpacing: -0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 6,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.verified_user_rounded,
+                  color: Color(0xFF2563EB),
+                  size: 12,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  emp.role.toUpperCase().replaceAll('_', ' '),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2563EB),
+                    letterSpacing: 0.5,
                   ),
-                  subtitle: const Text(
-                    'Update GPS geofence, times, and radius.',
-                    style: TextStyle(fontSize: 11),
-                  ),
-                  trailing: const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 14,
-                    color: Colors.grey,
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CompanySettingsScreen(),
-                      ),
-                    );
-                  },
                 ),
               ],
-            ]),
-            const SizedBox(height: 40),
+            ),
+          ),
+          if (emp.profilePicture != null && emp.profilePicture!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _deleteImage,
+              child: const Text(
+                'Remove Photo',
+                style: TextStyle(
+                  color: Color(0xFFEF4444),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1594,15 +1806,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        padding: const EdgeInsets.only(left: 8, bottom: 8),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            color: Colors.grey,
-            letterSpacing: 0.8,
-          ),
+        padding: const EdgeInsets.only(left: 28, top: 20, bottom: 4),
+        child: Row(
+          children: [
+            Container(
+              width: 3,
+              height: 12,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2563EB),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF64748B),
+                letterSpacing: 0.8,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1610,46 +1835,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildInfoCard(List<Widget> children) {
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-            blurRadius: 20,
+            color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+            blurRadius: 16,
             offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(children: children),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          children: children,
+        ),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+  Widget _buildInfoRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool isEditable = false,
+    Color themeColor = const Color(0xFF2563EB),
+  }) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+      ),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        onTap: isEditable ? _showEditProfileSheet : null,
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFF2563EB).withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
+            color: themeColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(icon, color: const Color(0xFF2563EB), size: 20),
+          child: Icon(icon, color: themeColor, size: 20),
         ),
         title: Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey.shade500,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+          label.toUpperCase(),
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
           ),
         ),
         subtitle: Padding(
-          padding: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.only(top: 4),
           child: Text(
             value,
             style: const TextStyle(
@@ -1659,6 +1899,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
+        trailing: isEditable
+            ? Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: themeColor.withValues(alpha: 0.06),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.edit_rounded,
+                  color: themeColor,
+                  size: 14,
+                ),
+              )
+            : null,
       ),
     );
   }
