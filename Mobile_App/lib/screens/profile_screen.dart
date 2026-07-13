@@ -1151,50 +1151,106 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Log Out',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFEF4444),
-          ),
-        ),
-        content: const Text(
-          'Are you sure you want to log out from the application?',
-          style: TextStyle(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: Color(0xFFEF4444),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Log Out',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ],
             ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final provider = Provider.of<AppProvider>(context, listen: false);
-              await provider.logout();
-              if (mounted) {
-                Navigator.pushReplacementNamed(context, '/login');
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Log Out',
+            const SizedBox(height: 16),
+            Text(
+              'Are you sure you want to log out from the application?',
               style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                height: 1.5,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade600,
               ),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(color: Colors.grey.shade200, width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final provider = Provider.of<AppProvider>(context, listen: false);
+                      await provider.logout();
+                      if (mounted) {
+                        Navigator.pushReplacementNamed(context, '/login');
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF4444),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      'Log Out',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1543,7 +1599,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final double statusBarHeight = MediaQuery.of(context).padding.top;
     final double headerHeight = 155 + statusBarHeight;
     final double cardTop = headerHeight - 85;
-    final double totalHeight = cardTop + 235;
+    final double totalHeight = cardTop + 140;
 
     return SizedBox(
       height: totalHeight,
@@ -1645,30 +1701,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  String _getRoleDisplayName(String role) {
+    switch (role.toLowerCase()) {
+      case 'system_admin':
+      case 'company_admin':
+        return 'Admin';
+      case 'manager':
+        return 'Manager';
+      case 'team_leader':
+        return 'Team Leader';
+      case 'employee':
+        return 'Employee';
+      default:
+        return role
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map((word) => word.isNotEmpty
+                ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
+                : '')
+            .join(' ');
+    }
+  }
+
   Widget _buildProfileCard(User emp) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Avatar Section with Gradient border
+          // Left side: Avatar Section with Gradient border
           Stack(
             alignment: Alignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(3),
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
@@ -1679,22 +1757,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 child: Container(
-                  padding: const EdgeInsets.all(2),
+                  padding: const EdgeInsets.all(1.5),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
                   ),
                   child: _isUploadingPicture
                       ? const CircleAvatar(
-                          radius: 50,
+                          radius: 36,
                           backgroundColor: Color(0xFFF8FAFC),
                           child: CircularProgressIndicator(
-                            strokeWidth: 3,
+                            strokeWidth: 2.5,
                             color: Color(0xFF2563EB),
                           ),
                         )
                       : AppAvatar(
-                          radius: 50,
+                          radius: 36,
                           backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.08),
                           imageUrl: emp.profilePicture != null && emp.profilePicture!.isNotEmpty
                               ? '${ApiService.baseUrl.replaceAll('/api', '')}${emp.profilePicture}'
@@ -1703,7 +1781,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             emp.name.isNotEmpty ? emp.name[0].toUpperCase() : '?',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 36,
+                              fontSize: 24,
                               color: Color(0xFF2563EB),
                             ),
                           ),
@@ -1716,87 +1794,95 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: GestureDetector(
                   onTap: _pickImage,
                   child: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: const Color(0xFF2563EB),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: Colors.white, width: 1.5),
                       boxShadow: [
                         BoxShadow(
                           color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
                     child: const Icon(
                       Icons.camera_alt_rounded,
                       color: Colors.white,
-                      size: 16,
+                      size: 12,
                     ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Name & Role
-          Text(
-            emp.name,
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 22,
-              color: Color(0xFF0F172A),
-              letterSpacing: -0.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 6,
-            ),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2563EB).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
+          const SizedBox(width: 18),
+          // Right side: Name & Designation
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.verified_user_rounded,
-                  color: Color(0xFF2563EB),
-                  size: 12,
-                ),
-                const SizedBox(width: 6),
                 Text(
-                  emp.role.toUpperCase().replaceAll('_', ' '),
+                  emp.name,
                   style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2563EB),
-                    letterSpacing: 0.5,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: -0.5,
                   ),
                 ),
+                const SizedBox(height: 4),
+                // Designation badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.verified_user_rounded,
+                        color: Color(0xFF2563EB),
+                        size: 10,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _getRoleDisplayName(emp.role),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2563EB),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (emp.profilePicture != null && emp.profilePicture!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: _deleteImage,
+                    child: const Text(
+                      'Remove Photo',
+                      style: TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          if (emp.profilePicture != null && emp.profilePicture!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: _deleteImage,
-              child: const Text(
-                'Remove Photo',
-                style: TextStyle(
-                  color: Color(0xFFEF4444),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

@@ -10,7 +10,9 @@ import 'package:http/http.dart' as http;
 import 'api_service.dart';
 import 'reminder_alarm_service.dart';
 
+@pragma('vm:entry-point')
 class LocationTrackingService {
+  @pragma('vm:entry-point')
   static Future<void> initializeService() async {
     if (kIsWeb) {
       debugPrint("Skipping Background Location Service Initialization on Web.");

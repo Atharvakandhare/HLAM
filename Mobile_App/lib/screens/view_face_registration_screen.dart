@@ -5,6 +5,7 @@ import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../utils/app_messages.dart';
+import 'face_capture_screen.dart';
 
 class ViewFaceRegistrationScreen extends StatefulWidget {
   final User user;
@@ -25,14 +26,12 @@ class _ViewFaceRegistrationScreenState extends State<ViewFaceRegistrationScreen>
   }
 
   Future<void> _updateFaceProcess() async {
-    final ImagePicker picker = ImagePicker();
     try {
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.front,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
+      final XFile? image = await Navigator.push<XFile>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const FaceCaptureScreen(),
+        ),
       );
 
       if (image == null) return;

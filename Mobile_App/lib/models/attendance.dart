@@ -64,25 +64,24 @@ class Attendance {
   });
 
   String get workingHours {
+    if (checkInTime != null && checkOutTime == null) {
+      final diff = DateTime.now().difference(checkInTime!);
+      return _formatDuration(diff);
+    }
+    if (checkInTime != null && checkOutTime != null) {
+      final diff = checkOutTime!.difference(checkInTime!);
+      return _formatDuration(diff);
+    }
     if (serverWorkingHours != null && serverWorkingHours!.isNotEmpty) {
       return serverWorkingHours!;
     }
-    if (checkInTime == null || checkOutTime == null) {
-      if (checkInTime != null && checkOutTime == null) {
-        final diff = DateTime.now().difference(checkInTime!);
-        return _formatDuration(diff);
-      }
-      return '00:00:00';
-    }
-    final diff = checkOutTime!.difference(checkInTime!);
-    return _formatDuration(diff);
+    return '0h 0m';
   }
 
   String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, "0");
-    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+    final hrs = duration.inHours;
+    final mins = duration.inMinutes.remainder(60);
+    return "${hrs}h ${mins}m";
   }
 
   factory Attendance.fromJson(Map<String, dynamic> json) {

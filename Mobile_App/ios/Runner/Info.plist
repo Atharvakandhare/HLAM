@@ -51,5 +51,11 @@
 	<string>This app requires access to the microphone for recording video.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app requires access to the photo library to upload face images.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app requires access to your location to verify your check-in location relative to the office.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app requires access to your location both in the foreground and background to track shift attendance.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app requires access to your location in the background to ensure attendance accuracy.</string>
 </dict>
 </plist>

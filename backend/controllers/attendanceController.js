@@ -380,8 +380,8 @@ const checkOut = async (req, res) => {
         totalWorkedMs += sessionMs;
       }
 
-      const diffHrs = Math.floor(totalWorkedMs / (1000 * 60 * 60));
-      const diffMins = Math.floor((totalWorkedMs % (1000 * 60 * 60)) / (1000 * 60));
+      const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
       record.workingHours = `${diffHrs}h ${diffMins}m`;
 
       // Early checkout / Late checkout / Overtime shift calculation

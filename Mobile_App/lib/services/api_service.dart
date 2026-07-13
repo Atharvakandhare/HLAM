@@ -29,12 +29,35 @@ class ApiException implements Exception {
 class ApiService {
   static ApiException? lastApiException;
 
-  // Live API server
-  static const String _liveUrl = 'https://intime.hirelyft.in/api';
+  // Live API server URL (Commented Out)
+  // static const String _liveUrl = 'https://intime.hirelyft.in/api';
+
+  // Port where your local backend is running (typically 8000 based on backend/.env)
+  static const String _localPort = '8000';
+
+  // 1. Android Emulator: uses 10.0.2.2 to access the host's localhost
+  static const String _androidEmulatorUrl = 'http://10.0.2.2:$_localPort/api';
+
+  // 2. iOS Simulator, Web, or Desktop: can use localhost/127.0.0.1 directly
+  static const String _localhostUrl = 'http://localhost:$_localPort/api';
+
+  // 3. Physical Device: If testing on a physical phone, replace this with your computer's local IP address
+  // You can find your local IP by running:
+  // - Windows: ipconfig (look for IPv4 Address, e.g., 192.168.1.15)
+  // - Mac/Linux: ifconfig or ip a
+  static const String _physicalDeviceIp = '192.168.1.15'; // CHANGE THIS to your PC's IP if testing on physical device
+  static const bool _usePhysicalDevice = false; // Set to true if testing on a physical phone
 
   // Development Localhost Backend
   static String get baseUrl {
-    return _liveUrl;
+    if (_usePhysicalDevice) {
+      return 'http://$_physicalDeviceIp:$_localPort/api';
+    }
+    // Auto-detect Android Emulator vs iOS Simulator/Web
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return _androidEmulatorUrl;
+    }
+    return _localhostUrl;
   }
 
 
@@ -263,7 +286,7 @@ class ApiService {
   }
 
   Future<void> deleteUser(int id) async {
-    await delete('/admin/users/$id');
+    await post('/admin/users/$id/delete', {});
   }
 
   Future<Map<String, dynamic>> resetUserSession(int id) async {

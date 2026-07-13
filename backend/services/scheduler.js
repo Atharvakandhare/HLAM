@@ -153,8 +153,9 @@ const autoCheckoutOpenSessions = async () => {
         totalWorkedMs += (new Date(r.checkOutTime) - new Date(r.checkInTime));
       }
 
-      const diffHrs = Math.floor(totalWorkedMs / (1000 * 60 * 60));
-      const diffMins = Math.floor((totalWorkedMs % (1000 * 60 * 60)) / (1000 * 60));
+      const validDiffMs = diffMs > 0 ? diffMs : 0;
+      const diffHrs = Math.floor(validDiffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((validDiffMs % (1000 * 60 * 60)) / (1000 * 60));
       record.workingHours = `${diffHrs}h ${diffMins}m`;
 
       // Assign status based on shift or company settings

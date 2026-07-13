@@ -24,6 +24,7 @@ import 'register_company_screen.dart';
 import '../utils/app_messages.dart';
 import '../widgets/app_avatar.dart';
 import 'package:image_picker/image_picker.dart';
+import 'face_capture_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -39,6 +40,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   User? _user;
   bool _isFirstLoad = true;
   bool _is24HourFormat = false;
+
+  // Search variables for Recent Employees
+  final TextEditingController _employeeSearchController = TextEditingController();
+  String _employeeSearchQuery = '';
 
   void _toggleTimeFormat() {
     setState(() {
@@ -341,6 +346,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _timer?.cancel();
     _alarmTimer?.cancel();
     _alarmAutoCloseTimer?.cancel();
+    _employeeSearchController.dispose();
     super.dispose();
   }
 
@@ -1379,6 +1385,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final employees = provider.employees;
     final teamsCount = provider.teams.length;
 
+    final filteredEmployees = employees.where((emp) {
+      final query = _employeeSearchQuery.trim().toLowerCase();
+      return emp.name.toLowerCase().contains(query);
+    }).toList();
+
     return [
       const Row(
         children: [
@@ -1724,6 +1735,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       const SizedBox(height: 12),
+      Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _employeeSearchController,
+          onChanged: (val) {
+            setState(() {
+              _employeeSearchQuery = val;
+            });
+          },
+          style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
+          decoration: InputDecoration(
+            hintText: 'Search by name...',
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+            prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF2563EB), size: 20),
+            suffixIcon: _employeeSearchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear_rounded, color: Colors.grey, size: 18),
+                    onPressed: () {
+                      _employeeSearchController.clear();
+                      setState(() {
+                        _employeeSearchQuery = '';
+                      });
+                    },
+                  )
+                : null,
+            filled: false,
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+      ),
       if (employees.isEmpty)
         Container(
           width: double.infinity,
@@ -1741,8 +1797,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         )
+      else if (filteredEmployees.isEmpty)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: const Column(
+            children: [
+              Icon(Icons.search_off_rounded, size: 48, color: Colors.grey),
+              SizedBox(height: 8),
+              Text('No employees match search', style: TextStyle(color: Colors.grey)),
+            ],
+          ),
+        )
       else
-        ...employees.take(5).map((emp) => _buildEmployeeCard(emp)),
+        ...(_employeeSearchQuery.isEmpty
+                ? filteredEmployees.take(5)
+                : filteredEmployees)
+            .map((emp) => _buildEmployeeCard(emp)),
     ];
   }
 
@@ -2374,61 +2450,109 @@ class _DashboardScreenState extends State<DashboardScreen> {
         builder: (context, setDialogState) {
           final showTextField = selectedReason == "Other";
           return AlertDialog(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
             ),
-            title: const Text(
-              'Checkout Reason',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
-              ),
-            ),
+            contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.exit_to_app_rounded,
+                          color: Color(0xFFEF4444),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Checkout Reason',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
                   const Text(
                     'Please select your reason for checking out:',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     initialValue: selectedReason,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF0F172A),
+                      fontWeight: FontWeight.w600,
+                    ),
                     decoration: InputDecoration(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 12,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        vertical: 14,
                       ),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+                      ),
                     ),
                     items: const [
                       DropdownMenuItem(
                         value: "Today's Work Done/Login Off",
                         child: Text(
                           "Today's Work Done/Login Off",
-                          style: TextStyle(fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       DropdownMenuItem(
                         value: "Personal Reason",
                         child: Text(
                           "Personal Reason",
-                          style: TextStyle(fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       DropdownMenuItem(
                         value: "Half Day",
-                        child: Text("Half Day", style: TextStyle(fontSize: 14)),
+                        child: Text(
+                          "Half Day",
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: "Other",
-                        child: Text("Other", style: TextStyle(fontSize: 14)),
+                        child: Text(
+                          "Other",
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                     onChanged: (val) {
@@ -2441,81 +2565,121 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 16),
                     const Text(
                       'Please specify your custom reason:',
-                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: reasonController,
                       maxLines: 2,
                       textCapitalization: TextCapitalization.sentences,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF0F172A),
+                        fontWeight: FontWeight.w500,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Enter custom reason...',
-                        hintStyle: const TextStyle(
+                        hintStyle: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey,
+                          color: Colors.grey.shade400,
                         ),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                         ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
                     ),
                   ],
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: Colors.grey.shade200, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final String finalReason;
+                            if (selectedReason == "Other") {
+                              finalReason = reasonController.text.trim();
+                              if (finalReason.isEmpty) {
+                                AppMessages.showError(
+                                  context,
+                                  'Please specify your custom reason.',
+                                );
+                                return;
+                              }
+                            } else {
+                              finalReason = selectedReason!;
+                            }
+
+                            Navigator.pop(ctx);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AttendanceCaptureScreen(
+                                  isCheckout: true,
+                                  checkoutReason: finalReason,
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFEF4444),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text(
+                            'Checkout',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final String finalReason;
-                  if (selectedReason == "Other") {
-                    finalReason = reasonController.text.trim();
-                    if (finalReason.isEmpty) {
-                      AppMessages.showError(
-                        context,
-                        'Please specify your custom reason.',
-                      );
-                      return;
-                    }
-                  } else {
-                    finalReason = selectedReason!;
-                  }
-
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AttendanceCaptureScreen(
-                        isCheckout: true,
-                        checkoutReason: finalReason,
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF44336),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Proceed to Checkout',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
           );
         },
       ),
@@ -2597,37 +2761,92 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: emp.isActive
-                  ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                  : const Color(0xFFEF4444).withValues(alpha: 0.15),
+          PopupMenuButton<String>(
+            onSelected: (action) => _handleEmployeeAction(emp, action),
+            elevation: 8,
+            shadowColor: const Color(0xFF0F172A).withValues(alpha: 0.1),
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Color(0xFFF1F5F9), width: 1.5),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  emp.isActive
-                      ? Icons.check_circle_rounded
-                      : Icons.cancel_rounded,
-                  size: 12,
-                  color: emp.isActive
-                      ? const Color(0xFF10B981)
-                      : const Color(0xFFEF4444),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  emp.isActive ? 'Active' : 'Inactive',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: emp.isActive
-                        ? const Color(0xFF10B981)
-                        : const Color(0xFFEF4444),
+            itemBuilder: (BuildContext context) {
+              return [
+                const PopupMenuItem<String>(
+                  value: 'reset_session',
+                  child: Row(
+                    children: [
+                      Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF2563EB)),
+                      SizedBox(width: 12),
+                      Text(
+                        'Reset Session',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+                const PopupMenuItem<String>(
+                  value: 'delete_user',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
+                      SizedBox(width: 12),
+                      Text(
+                        'Delete User',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFEF4444),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ];
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: emp.isActive
+                    ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                    : const Color(0xFFEF4444).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: emp.isActive
+                      ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                      : const Color(0xFFEF4444).withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    emp.isActive ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                    size: 11,
+                    color: emp.isActive ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    emp.isActive ? 'Active' : 'Inactive',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: emp.isActive ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_drop_down_rounded,
+                    size: 16,
+                    color: emp.isActive ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -2635,15 +2854,262 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _handleEmployeeAction(User emp, String action) async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+
+    if (action == 'reset_session') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.refresh_rounded,
+                      color: Color(0xFF2563EB),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Reset Session',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Are you sure you want to reset the session for ${emp.name}? This will log them out of all devices.',
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: Colors.grey.shade200, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Reset',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (confirm == true) {
+        setState(() {
+          _isFirstLoad = true;
+        });
+        try {
+          await provider.resetEmployeeSession(emp.id);
+          if (mounted) {
+            AppMessages.showSuccess(context, "Session reset successfully for ${emp.name}.");
+          }
+        } catch (e) {
+          if (mounted) {
+            AppMessages.showError(context, "Failed to reset session: $e");
+          }
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isFirstLoad = false;
+            });
+          }
+        }
+      }
+    } else if (action == 'delete_user') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Color(0xFFEF4444),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Delete User',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Are you sure you want to delete ${emp.name}? This action is permanent and cannot be undone.',
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: Colors.grey.shade200, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEF4444),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (confirm == true) {
+        setState(() {
+          _isFirstLoad = true;
+        });
+        try {
+          await provider.deleteEmployee(emp.id);
+          if (mounted) {
+            AppMessages.showSuccess(context, "${emp.name} has been deleted successfully.");
+          }
+          await _handleRefresh();
+        } catch (e) {
+          if (mounted) {
+            AppMessages.showError(context, "Failed to delete user: $e");
+          }
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isFirstLoad = false;
+            });
+          }
+        }
+      }
+    }
+  }
+
   Future<void> _registerFaceProcess() async {
-    final ImagePicker picker = ImagePicker();
     try {
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.front,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
+      final XFile? image = await Navigator.push<XFile>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const FaceCaptureScreen(),
+        ),
       );
 
       if (image == null) return;

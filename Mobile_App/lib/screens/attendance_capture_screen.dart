@@ -10,7 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../providers/app_provider.dart';
 import '../utils/app_messages.dart';
 import '../services/auth_service.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import '../services/face_detector_service.dart';
 
 class AttendanceCaptureScreen extends StatefulWidget {
   final bool isCheckout;
@@ -43,8 +43,6 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
   XFile? _capturedImage;
   AnimationController? _pulseController;
   Animation<double>? _pulseAnimation;
-  late final FaceDetector _faceDetector;
-
   @override
   void initState() {
     super.initState();
@@ -56,12 +54,6 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
 
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(parent: _pulseController!, curve: Curves.easeInOut),
-    );
-
-    _faceDetector = FaceDetector(
-      options: FaceDetectorOptions(
-        performanceMode: FaceDetectorMode.accurate,
-      ),
     );
 
     _initializeCamera();
@@ -215,9 +207,8 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
       final needsFaceVerification = ['employee', 'manager', 'team_leader'].contains(userRole);
 
       if (needsFaceVerification) {
-        final inputImage = InputImage.fromFilePath(image.path);
-        final List<Face> faces = await _faceDetector.processImage(inputImage);
-        if (faces.isEmpty) {
+        final bool isFacePresent = await NativeFaceDetector.isFacePresent(image.path);
+        if (!isFacePresent) {
           throw Exception(
             "Face not detected! Please align your face inside the guide, ensure good lighting, and try again."
           );
@@ -312,7 +303,6 @@ class _AttendanceCaptureScreenState extends State<AttendanceCaptureScreen>
   void dispose() {
     _controller?.dispose();
     _pulseController?.dispose();
-    _faceDetector.close();
     super.dispose();
   }
 

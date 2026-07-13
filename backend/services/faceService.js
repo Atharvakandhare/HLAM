@@ -6,7 +6,13 @@ const fs = require('fs');
 
 // Patch face-api environment to use node-canvas
 const { Canvas, Image, ImageData } = canvas;
-faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
+faceapi.env.monkeyPatch({
+  Canvas,
+  Image,
+  ImageData,
+  createCanvasElement: () => new Canvas(300, 150),
+  createImageElement: () => new Image()
+});
 
 let modelsLoaded = false;
 
