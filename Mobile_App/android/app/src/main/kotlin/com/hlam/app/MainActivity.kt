@@ -47,10 +47,10 @@ class MainActivity : FlutterActivity() {
                     result.success(faces.isNotEmpty())
                 }
                 .addOnFailureListener { e ->
-                    result.error("ML_KIT_ERROR", e.localizedDescription, null)
+                    result.error("ML_KIT_ERROR", e.localizedMessage, null)
                 }
         } catch (e: Exception) {
-            result.error("PROCESS_ERROR", e.localizedDescription, null)
+            result.error("PROCESS_ERROR", e.localizedMessage, null)
         }
     }
 }

@@ -93,12 +93,14 @@ class _ManagerTeamScreenState extends State<ManagerTeamScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (sheetCtx, setSheetState) {
           List<User> filteredList = List.from(assignableList);
           
-          return Container(
+          return SafeArea(
+            child: Container(
             height: MediaQuery.of(context).size.height * 0.75,
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -238,6 +240,7 @@ class _ManagerTeamScreenState extends State<ManagerTeamScreen> {
                 ),
               ],
             ),
+          ),
           );
         },
       ),

@@ -74,9 +74,10 @@ class _RegisterCompanyScreenState extends State<RegisterCompanyScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
-          : SingleChildScrollView(
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
+            : SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Form(
@@ -278,6 +279,7 @@ class _RegisterCompanyScreenState extends State<RegisterCompanyScreen> {
                 ),
               ),
             ),
+          ),
     );
   }
 

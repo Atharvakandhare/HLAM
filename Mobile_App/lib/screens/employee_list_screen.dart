@@ -41,6 +41,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       isDismissible: false,
       enableDrag: false,
@@ -142,12 +143,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               minChildSize: 0.5,
               maxChildSize: 0.95,
               builder: (_, scrollController) {
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                  ),
-                  child: Column(
+                return SafeArea(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    ),
+                    child: Column(
                     children: [
                       // ── Drag Handle ──────────────────────────────────
                       const SizedBox(height: 12),
@@ -723,6 +725,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       ),
                     ],
                   ),
+                ),
                 );
               },
             );

@@ -30,6 +30,18 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _switchTab(bool isRegistering) {
+    if (_isRegisteringCompany == isRegistering) return;
+    _formKey.currentState?.reset();
+    _emailController.clear();
+    _passwordController.clear();
+    _companyNameController.clear();
+    _nameController.clear();
+    setState(() {
+      _isRegisteringCompany = isRegistering;
+    });
+  }
+
   void _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -330,7 +342,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     children: [
                                       Expanded(
                                         child: GestureDetector(
-                                          onTap: () => setState(() => _isRegisteringCompany = false),
+                                          onTap: () => _switchTab(false),
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(vertical: 12),
                                             decoration: BoxDecoration(
@@ -351,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                       Expanded(
                                         child: GestureDetector(
-                                          onTap: () => setState(() => _isRegisteringCompany = true),
+                                          onTap: () => _switchTab(true),
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(vertical: 12),
                                             decoration: BoxDecoration(

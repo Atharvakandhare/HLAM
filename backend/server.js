@@ -275,6 +275,20 @@ const startServer = async () => {
                     });
                     console.log('✅ Added distance_from_office column to attendances table.');
                 }
+                if (!attendanceTableDefinition.is_face_matched) {
+                    await queryInterface.addColumn('attendances', 'is_face_matched', {
+                        type: DataTypes.BOOLEAN,
+                        defaultValue: true
+                    });
+                    console.log('✅ Added is_face_matched column to attendances table.');
+                }
+                if (!attendanceTableDefinition.is_checkout_face_matched) {
+                    await queryInterface.addColumn('attendances', 'is_checkout_face_matched', {
+                        type: DataTypes.BOOLEAN,
+                        defaultValue: true
+                    });
+                    console.log('✅ Added is_checkout_face_matched column to attendances table.');
+                }
             } catch (err) {
                 console.log('ℹ️ Dynamic migration skipped for attendances (table does not exist yet).');
             }

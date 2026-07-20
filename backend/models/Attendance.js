@@ -123,6 +123,16 @@ const Attendance = sequelize.define(
       allowNull: true,
       field: 'overtime_duration',
     },
+    isFaceMatched: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      field: 'is_face_matched',
+    },
+    isCheckoutFaceMatched: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      field: 'is_checkout_face_matched',
+    },
   },
   {
     tableName: 'attendances',

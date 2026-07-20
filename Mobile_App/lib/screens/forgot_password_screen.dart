@@ -18,7 +18,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   
+  final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _otpFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
+  final FocusNode _confirmPasswordFocusNode = FocusNode();
+
   final _authService = AuthService();
   
   final _formKey1 = GlobalKey<FormState>();
@@ -77,8 +81,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     _passwordController.removeListener(_onPasswordChanged);
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _emailFocusNode.dispose();
     _otpFocusNode.removeListener(_onOtpFocusChanged);
     _otpFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
     _timer?.cancel();
     _cursorTimer?.cancel();
     super.dispose();
@@ -116,7 +123,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _startResendTimer();
       // Auto-focus the OTP hidden input
       Future.delayed(const Duration(milliseconds: 300), () {
-        _otpFocusNode.requestFocus();
+        if (mounted) {
+          FocusScope.of(context).requestFocus(_otpFocusNode);
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -159,6 +168,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       setState(() {
         _resetToken = token;
         _currentStep = 3;
+      });
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          FocusScope.of(context).requestFocus(_passwordFocusNode);
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -506,6 +520,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text(
           'Reset Password',
@@ -534,119 +549,130 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
       ),
       extendBodyBehindAppBar: true,
-      body: Stack(
-        children: [
-          // Aurora Mesh Gradient Background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0F172A), Color(0xFF020617)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Stack(
+          children: [
+            // Background Mesh & Glowing Orbs wrapped in IgnorePointer to avoid intercepting touch events
+            IgnorePointer(
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF0F172A), Color(0xFF020617)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: -100,
+                    left: -100,
+                    child: Container(
+                      width: 320,
+                      height: 320,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -50,
+                    right: -100,
+                    child: Container(
+                      width: 350,
+                      height: 350,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF4F46E5).withValues(alpha: 0.15),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 280,
+                    right: -150,
+                    child: Container(
+                      width: 280,
+                      height: 280,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          
-          // Glowing Orbs
-          Positioned(
-            top: -100,
-            left: -100,
-            child: Container(
-              width: 320,
-              height: 320,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF2563EB).withValues(alpha: 0.15),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -50,
-            right: -100,
-            child: Container(
-              width: 350,
-              height: 350,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF4F46E5).withValues(alpha: 0.15),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 280,
-            right: -150,
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF10B981).withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          
-          // Blur layer for background orbs
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-              child: const SizedBox.shrink(),
-            ),
-          ),
 
-          // Main Scrollable Content
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.topCenter,
-                      children: [
-                        // Translucent Glassmorphic Card Container
-                        Padding(
-                          padding: const EdgeInsets.only(top: 55),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(30),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                key: ValueKey<int>(_currentStep),
-                                padding: const EdgeInsets.fromLTRB(24.0, 72.0, 24.0, 24.0),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.94),
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.45),
-                                    width: 1.5,
+            // Main Scrollable Content
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight - 32,
+                      ),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.topCenter,
+                              children: [
+                                // Translucent Glassmorphic Card Container
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 55),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(30),
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 300),
+                                        key: ValueKey<int>(_currentStep),
+                                        padding: const EdgeInsets.fromLTRB(24.0, 72.0, 24.0, 24.0),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.94),
+                                          borderRadius: BorderRadius.circular(30),
+                                          border: Border.all(
+                                            color: Colors.white.withValues(alpha: 0.45),
+                                            width: 1.5,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.15),
+                                              blurRadius: 40,
+                                              offset: const Offset(0, 16),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            _buildStepIndicator(),
+                                            const SizedBox(height: 24),
+                                            AnimatedSwitcher(
+                                              duration: const Duration(milliseconds: 250),
+                                              child: _buildStepContent(),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.15),
-                                      blurRadius: 40,
-                                      offset: const Offset(0, 16),
-                                    ),
-                                  ],
                                 ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildStepIndicator(),
-                                    const SizedBox(height: 24),
-                                    AnimatedSwitcher(
-                                      duration: const Duration(milliseconds: 250),
-                                      child: _buildStepContent(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
                         
                         // Layered Premium Illustration Icon Display - Overlapping Header Badge
                         Positioned(
@@ -715,11 +741,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               ),
             ),
-          ),
-        ],
+          );
+        },
       ),
-    );
-  }
+    ),
+  ],
+),
+),
+);
+}
 
   Widget _buildStepContent() {
     switch (_currentStep) {
@@ -760,7 +790,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const SizedBox(height: 24),
           TextFormField(
             controller: _emailController,
+            focusNode: _emailFocusNode,
+            autofocus: true,
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _sendOtp(),
             style: const TextStyle(color: Color(0xFF0F172A), fontSize: 15),
             decoration: InputDecoration(
               labelText: 'Email Address',
@@ -837,30 +871,42 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 28),
           
-          // Modern separate OTP digital boxes with single hidden field overlay
+          // Modern separate OTP digital boxes with transparent TextField overlay
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
-              _otpFocusNode.requestFocus();
+              FocusScope.of(context).requestFocus(_otpFocusNode);
             },
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Hidden completely transparent TextFormField
-                Opacity(
-                  opacity: 0.0,
-                  child: TextFormField(
+                // Fully hit-testable transparent TextField overlay
+                Positioned.fill(
+                  child: TextField(
                     controller: _otpController,
                     focusNode: _otpFocusNode,
                     keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      if (_otpController.text.length == 4 && !_isLoading) {
+                        _verifyOtp();
+                      }
+                    },
                     maxLength: 4,
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
                       LengthLimitingTextInputFormatter(4),
                     ],
+                    showCursor: false,
+                    enableInteractiveSelection: false,
+                    style: const TextStyle(color: Colors.transparent, fontSize: 1),
                     decoration: const InputDecoration(
                       counterText: '',
                       border: InputBorder.none,
-                      filled: false,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                      fillColor: Colors.transparent,
                     ),
                   ),
                 ),
@@ -1025,7 +1071,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const SizedBox(height: 24),
           TextFormField(
             controller: _passwordController,
+            focusNode: _passwordFocusNode,
             obscureText: _obscurePassword,
+            textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) {
+              FocusScope.of(context).requestFocus(_confirmPasswordFocusNode);
+            },
             style: const TextStyle(color: Color(0xFF0F172A), fontSize: 15),
             decoration: InputDecoration(
               labelText: 'New Password',
@@ -1086,7 +1137,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           
           TextFormField(
             controller: _confirmPasswordController,
+            focusNode: _confirmPasswordFocusNode,
             obscureText: _obscureConfirmPassword,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _resetPassword(),
             style: const TextStyle(color: Color(0xFF0F172A), fontSize: 15),
             decoration: InputDecoration(
               labelText: 'Confirm Password',

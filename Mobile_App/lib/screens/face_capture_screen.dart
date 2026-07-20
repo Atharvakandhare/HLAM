@@ -136,7 +136,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
                     icon: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white24, width: 1),
                       ),
@@ -209,7 +209,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
     return IgnorePointer(
       child: ColorFiltered(
         colorFilter: ColorFilter.mode(
-          Colors.black.withOpacity(0.7),
+          Colors.black.withValues(alpha: 0.7),
           BlendMode.srcOut,
         ),
         child: Stack(
@@ -261,7 +261,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
               'Align your face inside the guide and look directly at the front camera.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 height: 1.4,
@@ -312,7 +312,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
             height: 60,
             width: 60,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white30, width: 1),
             ),

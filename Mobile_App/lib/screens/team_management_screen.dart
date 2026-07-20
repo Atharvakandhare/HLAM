@@ -232,9 +232,10 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        color: const Color(0xFF2563EB),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refreshData,
+          color: const Color(0xFF2563EB),
         child: teams.isEmpty
             ? Center(
                 child: Column(
@@ -531,6 +532,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                   );
                 },
               ),
+        ),
       ),
     );
   }

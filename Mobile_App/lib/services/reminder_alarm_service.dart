@@ -34,8 +34,15 @@ class ReminderAlarmService {
     const AndroidInitializationSettings androidInit =
         AndroidInitializationSettings('@drawable/ic_bg_service_small');
 
+    const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+
     const InitializationSettings initSettings = InitializationSettings(
       android: androidInit,
+      iOS: iosInit,
     );
 
     await _notificationsPlugin.initialize(

@@ -162,6 +162,8 @@ class AttendanceDetailsScreen extends StatelessWidget {
                                       ),
                                     ],
                                   ),
+                                  const SizedBox(height: 6),
+                                  _buildFaceMatchBadge(isCheckIn ? record.isFaceMatched : record.isCheckoutFaceMatched),
                                   const SizedBox(height: 8),
                                   Text(
                                     formattedTime,
@@ -294,6 +296,7 @@ class AttendanceDetailsScreen extends StatelessWidget {
                             label: 'Check-in Selfie',
                             imageUrl: record.selfieUrl,
                             timestamp: record.checkInTime,
+                            isFaceMatched: record.isFaceMatched,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -303,6 +306,7 @@ class AttendanceDetailsScreen extends StatelessWidget {
                             label: 'Check-out Selfie',
                             imageUrl: record.checkoutSelfieUrl,
                             timestamp: record.checkOutTime,
+                            isFaceMatched: record.isCheckoutFaceMatched,
                           ),
                         ),
                       ],
@@ -469,6 +473,7 @@ class AttendanceDetailsScreen extends StatelessWidget {
     required String label,
     required String? imageUrl,
     required DateTime? timestamp,
+    required bool isFaceMatched,
   }) {
     String? fullUrl;
     if (imageUrl != null && imageUrl.isNotEmpty) {
@@ -489,10 +494,17 @@ class AttendanceDetailsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Text(
-                label,
-                style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.bold),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                  if (imageUrl != null && imageUrl.isNotEmpty)
+                    _buildFaceMatchBadge(isFaceMatched),
+                ],
               ),
             ),
             GestureDetector(
@@ -548,6 +560,37 @@ class AttendanceDetailsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFaceMatchBadge(bool isMatched) {
+    final color = isMatched ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isMatched ? Icons.check_circle_rounded : Icons.cancel_rounded,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isMatched ? 'Face Matched' : 'Face Not Matched',
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
+          ),
+        ],
       ),
     );
   }

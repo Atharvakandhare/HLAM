@@ -274,6 +274,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (sheetCtx, setSheetState) {
@@ -369,12 +370,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             minChildSize: 0.5,
             maxChildSize: 0.95,
             builder: (_, scrollController) {
-              return Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                ),
-                child: Form(
+              return SafeArea(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  ),
+                  child: Form(
                   key: _formKey,
                   child: Column(
                     children: [
@@ -730,19 +732,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ),
                             ),
+                            SizedBox(height: MediaQuery.of(sheetCtx).padding.bottom + 16),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
+              ),
+            );
+          },
+        );
+      },
+    ),
+  );
+}
 
   Widget _buildLockedField({
     required String label,
@@ -931,11 +935,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (sheetCtx, setSheetState) => Container(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 24,
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom +
+                MediaQuery.of(sheetCtx).padding.bottom +
+                24,
             left: 24,
             right: 24,
             top: 24,

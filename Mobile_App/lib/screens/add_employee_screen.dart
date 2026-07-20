@@ -711,6 +711,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       isDismissible: false,
       enableDrag: false,
@@ -825,24 +826,25 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
               minChildSize: 0.5,
               maxChildSize: 0.95,
               builder: (_, scrollController) {
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(28),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFCBD5E1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
+                return SafeArea(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(28),
                       ),
+                    ),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 12),
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFCBD5E1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
                       const SizedBox(height: 4),
                       Expanded(
                         child: SingleChildScrollView(
@@ -1580,6 +1582,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                       ),
                     ],
                   ),
+                ),
                 );
               },
             );
@@ -1868,11 +1871,12 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
             ),
         ],
       ),
-      body: _isLoading || _isUploadingPicture
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF2563EB)),
-            )
-          : SingleChildScrollView(
+      body: SafeArea(
+        child: _isLoading || _isUploadingPicture
+            ? const Center(
+                child: CircularProgressIndicator(color: Color(0xFF2563EB)),
+              )
+            : SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Form(
@@ -2948,6 +2952,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                 ),
               ),
             ),
+          ),
     );
   }
 

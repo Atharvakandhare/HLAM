@@ -558,12 +558,14 @@ class _AdminMarketingTrackingScreenState extends State<AdminMarketingTrackingScr
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => DraggableScrollableSheet(
         initialChildSize: 0.6,
         minChildSize: 0.4,
         maxChildSize: 0.92,
-        builder: (_, controller) => Container(
+        builder: (_, controller) => SafeArea(
+          child: Container(
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -711,6 +713,7 @@ class _AdminMarketingTrackingScreenState extends State<AdminMarketingTrackingScr
               ),
             ],
           ),
+        ),
         ),
       ),
     );

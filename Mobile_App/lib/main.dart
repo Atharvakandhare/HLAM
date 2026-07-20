@@ -62,9 +62,6 @@ Future<void> _initFcm() async {
     );
     debugPrint('User granted push notification permission: ${settings.authorizationStatus}');
 
-    // Initialize local notifications service so we can display foreground alerts with sound
-    await ReminderAlarmService.init();
-
     // Set foreground notification options for iOS
     await messaging.setForegroundNotificationPresentationOptions(
       alert: true,
@@ -104,6 +101,7 @@ void main() async {
 
   _checkForUpdate(); // fire-and-forget; don't await so startup isn't blocked
   await LocationTrackingService.initializeService();
+  await ReminderAlarmService.init();
   runApp(const MyApp());
 }
 

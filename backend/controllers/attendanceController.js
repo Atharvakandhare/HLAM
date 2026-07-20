@@ -103,6 +103,7 @@ const checkIn = async (req, res) => {
 
     // Face verification for non-admin roles
     const needsFaceVerification = ['employee', 'manager', 'team_leader'].includes(userRole);
+    let isFaceMatched = true;
     if (needsFaceVerification) {
       const user = await User.findByPk(userId);
       if (!user || !user.faceDescriptor) {
@@ -115,24 +116,12 @@ const checkIn = async (req, res) => {
       const newDescriptor = await getFaceDescriptor(localFilePath);
 
       if (!newDescriptor) {
-        if (fs.existsSync(localFilePath)) {
-          try { fs.unlinkSync(localFilePath); } catch (e) {}
-        }
-        return res.status(400).json({ 
-          message: 'No face detected in your check-in selfie. Please make sure your face is clearly visible and try again.' 
-        });
-      }
-
-      const { isMatch, distance } = verifyFaceMatch(user.faceDescriptor, newDescriptor);
-      console.log(`[FaceVerify Check-In] User ID: ${userId}, Distance: ${distance.toFixed(4)}, Match: ${isMatch}`);
-
-      if (!isMatch) {
-        if (fs.existsSync(localFilePath)) {
-          try { fs.unlinkSync(localFilePath); } catch (e) {}
-        }
-        return res.status(403).json({ 
-          message: 'Face verification failed! The captured selfie does not match your registered face profile.' 
-        });
+        console.log(`[FaceVerify Check-In] No face detected in check-in selfie for user ${userId}. Marking isFaceMatched = false.`);
+        isFaceMatched = false;
+      } else {
+        const { isMatch, distance } = verifyFaceMatch(user.faceDescriptor, newDescriptor);
+        console.log(`[FaceVerify Check-In] User ID: ${userId}, Distance: ${distance.toFixed(4)}, Match: ${isMatch}`);
+        isFaceMatched = isMatch;
       }
     }
 
@@ -256,6 +245,7 @@ const checkIn = async (req, res) => {
       shiftId,
       isLateIn,
       isEarlyIn,
+      isFaceMatched,
     });
 
     const attendanceData = record.toJSON();
@@ -294,6 +284,7 @@ const checkOut = async (req, res) => {
     // Face verification for non-admin roles
     const userRole = req.user.role;
     const needsFaceVerification = ['employee', 'manager', 'team_leader'].includes(userRole);
+    let isCheckoutFaceMatched = true;
     if (needsFaceVerification) {
       const user = await User.findByPk(userId);
       if (!user || !user.faceDescriptor) {
@@ -306,24 +297,12 @@ const checkOut = async (req, res) => {
       const newDescriptor = await getFaceDescriptor(localFilePath);
 
       if (!newDescriptor) {
-        if (fs.existsSync(localFilePath)) {
-          try { fs.unlinkSync(localFilePath); } catch (e) {}
-        }
-        return res.status(400).json({ 
-          message: 'No face detected in your check-out selfie. Please make sure your face is clearly visible and try again.' 
-        });
-      }
-
-      const { isMatch, distance } = verifyFaceMatch(user.faceDescriptor, newDescriptor);
-      console.log(`[FaceVerify Check-Out] User ID: ${userId}, Distance: ${distance.toFixed(4)}, Match: ${isMatch}`);
-
-      if (!isMatch) {
-        if (fs.existsSync(localFilePath)) {
-          try { fs.unlinkSync(localFilePath); } catch (e) {}
-        }
-        return res.status(403).json({ 
-          message: 'Face verification failed! The captured selfie does not match your registered face profile.' 
-        });
+        console.log(`[FaceVerify Check-Out] No face detected in check-out selfie for user ${userId}. Marking isCheckoutFaceMatched = false.`);
+        isCheckoutFaceMatched = false;
+      } else {
+        const { isMatch, distance } = verifyFaceMatch(user.faceDescriptor, newDescriptor);
+        console.log(`[FaceVerify Check-Out] User ID: ${userId}, Distance: ${distance.toFixed(4)}, Match: ${isMatch}`);
+        isCheckoutFaceMatched = isMatch;
       }
     }
 
@@ -464,6 +443,7 @@ const checkOut = async (req, res) => {
       }
     }
 
+    record.isCheckoutFaceMatched = isCheckoutFaceMatched;
     await record.save();
     return res.json({ message: 'Check-out recorded', attendance: record });
   } catch (error) {

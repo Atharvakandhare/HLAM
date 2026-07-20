@@ -129,13 +129,19 @@ class _CompanyHolidaysScreenState extends State<CompanyHolidaysScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-            top: 0, left: 24, right: 24,
-          ),
+        builder: (ctx, setSheetState) => SafeArea(
+          child: Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom +
+                  MediaQuery.of(ctx).padding.bottom +
+                  24,
+              top: 0,
+              left: 24,
+              right: 24,
+            ),
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -242,6 +248,7 @@ class _CompanyHolidaysScreenState extends State<CompanyHolidaysScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -716,13 +723,19 @@ class _CompanyHolidaysScreenState extends State<CompanyHolidaysScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-            top: 0, left: 24, right: 24,
-          ),
+        builder: (ctx, setSheetState) => SafeArea(
+          child: Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom +
+                  MediaQuery.of(ctx).padding.bottom +
+                  24,
+              top: 0,
+              left: 24,
+              right: 24,
+            ),
           constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.8),
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -892,6 +905,7 @@ class _CompanyHolidaysScreenState extends State<CompanyHolidaysScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

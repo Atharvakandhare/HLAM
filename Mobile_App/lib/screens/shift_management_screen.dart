@@ -426,15 +426,19 @@ class _ShiftManagementScreenState extends State<ShiftManagementScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (sheetCtx, setSheetState) => Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 24,
-            left: 24,
-            right: 24,
-            top: 24,
-          ),
+        builder: (sheetCtx, setSheetState) => SafeArea(
+          child: Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(sheetCtx).viewInsets.bottom +
+                  MediaQuery.of(sheetCtx).padding.bottom +
+                  24,
+              left: 24,
+              right: 24,
+              top: 24,
+            ),
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -769,7 +773,8 @@ class _ShiftManagementScreenState extends State<ShiftManagementScreen>
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   void _confirmDeleteShift(Shift shift) {

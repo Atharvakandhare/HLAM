@@ -2465,6 +2465,8 @@ class GroupedAttendanceCard extends StatelessWidget {
                                       ),
                                     ],
                                   ),
+                                  const SizedBox(height: 6),
+                                  _buildFaceMatchBadge(isCheckIn ? record.isFaceMatched : record.isCheckoutFaceMatched),
                                   const SizedBox(height: 8),
                                   Text(
                                     formattedTime,
@@ -2525,6 +2527,37 @@ class GroupedAttendanceCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildFaceMatchBadge(bool isMatched) {
+    final color = isMatched ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isMatched ? Icons.check_circle_rounded : Icons.cancel_rounded,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isMatched ? 'Face Matched' : 'Face Not Matched',
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
